@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import socketClient from "./shared/utils/socket-client.js";
 import Modal from "./shared/components/Modal.jsx";
 import Button from "./shared/components/Button.jsx";
 import LoadingSpinner from "./shared/components/LoadingSpinner.jsx";
+import ToastStack from "./shared/components/Toast.jsx";
 import VetrolisciGameBoard from "./client/components/GameBoard.jsx";
 import "./App.css";
 
@@ -15,72 +16,125 @@ function App() {
   const [currentRoom, setCurrentRoom] = useState(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [gameData, setGameData] = useState(null);
+  const [reconnecting, setReconnecting] = useState(false);
+  const [toasts, setToasts] = useState([]);
+  const lastConnectionState = useRef(false);
+  const initialConnectionCheck = useRef(true);
 
-  // Connect to server on app load
-  useEffect(() => {
-    const connect = async () => {
+  const pushToast = useCallback((message, type = "info", subtext = "") => {
+    const id = `${Date.now()}-${Math.random()}`;
+    setToasts((prev) => [...prev, { id, message, type, subtext }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, 2800);
+  }, []);
+
+  const dismissToast = useCallback((id) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }, []);
+
+  const attachSocketListeners = useCallback(() => {
+    socketClient.onConnectionStatus(({ connected, reconnected }) => {
+      setConnected(connected);
+      if (reconnected) {
+        console.log("🔌 Reconnected to server");
+        pushToast("Reconnected to server", "success", "You can continue your match.");
+      }
+    });
+
+    socketClient.onError((error) => {
+      setError(error.message || "An error occurred");
+      setShowErrorModal(true);
+      pushToast("Connection issue", "error", error.message || "Check your network and retry.");
+    });
+
+    socketClient.onPlayerJoined((data) => {
+      console.log("👤 Player joined:", data);
+    });
+
+    socketClient.on("game-started", (data) => {
+      console.log("🚀 Game started for room:", data.room.code);
+
+      let playerIndex = 0;
+      if (data.room && data.room.players) {
+        const myPlayer = data.room.players.find((p) => p.id === socketClient.getSocketId());
+        if (myPlayer) {
+          playerIndex = data.room.players.indexOf(myPlayer);
+        }
+      }
+
+      console.log(`🎯 Joined as Player ${playerIndex} (${data.room.players[playerIndex]?.name})`);
+
+      setGameData({
+        roomCode: data.room.code,
+        playerIndex,
+        gameState: data.gameState,
+      });
+      setCurrentView("game");
+    });
+
+    socketClient.on("vetrolisci-game-state", (data) => {
+      setGameData((prev) => (prev ? { ...prev, gameState: data } : prev));
+    });
+  }, [pushToast]);
+
+  const initializeSocketConnection = useCallback(
+    async ({ showLoader = false } = {}) => {
       try {
-        setLoading(true);
+        if (showLoader) {
+          setLoading(true);
+        }
         await socketClient.connect();
         setConnected(true);
-
-        socketClient.onConnectionStatus(({ connected, reconnected }) => {
-          setConnected(connected);
-          if (reconnected) {
-            console.log("🔌 Reconnected to server");
-          }
-        });
-
-        socketClient.onError((error) => {
-          setError(error.message || "An error occurred");
-          setShowErrorModal(true);
-        });
-
-        socketClient.onPlayerJoined((data) => {
-          console.log("👤 Player joined:", data);
-        });
-
-        // Listen for game start
-        socketClient.on("game-started", (data) => {
-          console.log("🚀 Game started for room:", data.room.code);
-
-          let playerIndex = 0;
-          if (data.room && data.room.players) {
-            const myPlayer = data.room.players.find((p) => p.id === socketClient.getSocketId());
-            if (myPlayer) {
-              playerIndex = data.room.players.indexOf(myPlayer);
-            }
-          }
-
-          console.log(`🎯 Joined as Player ${playerIndex} (${data.room.players[playerIndex]?.name})`);
-
-          setGameData({
-            roomCode: data.room.code,
-            playerIndex,
-            gameState: data.gameState,
-          });
-          setCurrentView("game");
-        });
-
-        // Keep game header in sync
-        socketClient.on("vetrolisci-game-state", (data) => {
-          setGameData((prev) => (prev ? { ...prev, gameState: data } : prev));
-        });
+        attachSocketListeners();
       } catch (err) {
         console.error("Failed to connect to server:", err);
         setError("Failed to connect to server. Please check your connection.");
         setShowErrorModal(true);
       } finally {
-        setLoading(false);
+        if (showLoader) {
+          setLoading(false);
+        }
       }
-    };
+    },
+    [attachSocketListeners]
+  );
 
-    connect();
+  useEffect(() => {
+    initializeSocketConnection({ showLoader: true });
 
     return () => {
       socketClient.disconnect();
     };
-  }, []);
+  }, [initializeSocketConnection]);
+
+  useEffect(() => {
+    if (initialConnectionCheck.current) {
+      initialConnectionCheck.current = false;
+      lastConnectionState.current = connected;
+      return;
+    }
+
+    if (connected && !lastConnectionState.current) {
+      pushToast("Reconnected to server", "success", "You can continue your match.");
+    }
+
+    lastConnectionState.current = connected;
+  }, [connected, pushToast]);
+
+  const handleReconnect = async () => {
+    if (reconnecting) return;
+    if (socketClient.isConnected()) {
+      setConnected(true);
+      return;
+    }
+    setReconnecting(true);
+    await initializeSocketConnection();
+    if (socketClient.isConnected()) {
+      pushToast("Reconnected", "success");
+    }
+    setReconnecting(false);
+  };
 
   const handleJoinGame = () => {
     setCurrentView("join");
@@ -181,6 +235,7 @@ function App() {
   const copyRoomCode = () => {
     navigator.clipboard.writeText(roomCode);
     console.log("📋 Room code copied to clipboard");
+    pushToast("Room code copied", "success", "Share it with your opponent.");
   };
 
   if (loading && currentView === "menu") {
@@ -192,6 +247,24 @@ function App() {
   }
 
   const playersInRoom = currentRoom?.room?.players?.length || 1;
+  const roomCodeReady = roomCode.length === 6;
+  const joinDisabled = !connected || !roomCodeReady || loading;
+
+  const renderConnectionPill = (size = "default") =>
+    !connected ? (
+      <div className={`connection-pill offline ${size === "compact" ? "connection-pill--compact" : ""}`}>
+        <div className="connection-pill__status">
+          <span className="status-dot"></span>
+          <div>
+            <p>Disconnected from server</p>
+            <small>Check your connection or retry.</small>
+          </div>
+        </div>
+        <Button variant="secondary" size="small" onClick={handleReconnect} loading={reconnecting}>
+          Retry
+        </Button>
+      </div>
+    ) : null;
 
   return (
     <div className="app">
@@ -251,22 +324,31 @@ function App() {
       <main className="app-main">
         {currentView === "menu" && (
           <div className="menu">
+            <div className="menu-kicker">Real-time duel</div>
             <div className="menu-title">
               <h1>🎴 Vetrolisci</h1>
-              <p>Fast-paced two player card duel</p>
+              <p>Draft fast, place smart, outscore your rival.</p>
             </div>
+
+            <p className="menu-helper">Host spins up a private room and shares a 6-character code.</p>
 
             <div className="menu-buttons">
-              <Button variant="success" size="large" onClick={handleCreateVetrolisciRoom} disabled={!connected}>
-                Host a Game
-              </Button>
+              <div className="menu-button-block">
+                <Button variant="success" size="large" onClick={handleCreateVetrolisciRoom} disabled={!connected}>
+                  Host a Game
+                </Button>
+                <p className="menu-button-hint">Create a private room and get a shareable code.</p>
+              </div>
 
-              <Button variant="primary" size="large" onClick={handleJoinGame} disabled={!connected}>
-                Join Game
-              </Button>
+              <div className="menu-button-block">
+                <Button variant="primary" size="large" onClick={handleJoinGame} disabled={!connected}>
+                  Join Game
+                </Button>
+                <p className="menu-button-hint">Jump into a room with a 6-character code.</p>
+              </div>
             </div>
 
-            {!connected && <div className="menu-connection-status">⚠️ Disconnected from server</div>}
+            {renderConnectionPill()}
           </div>
         )}
 
@@ -277,25 +359,44 @@ function App() {
               <p>Enter your room code to join friends</p>
             </div>
             <div className="join-form">
+              <label className="field-label" htmlFor="room-code-input">
+                Room code
+              </label>
               <input
                 type="text"
-                placeholder="Enter room code..."
+                placeholder="ABC123"
                 value={roomCode}
                 onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                 maxLength={6}
                 className="room-code-input"
+                id="room-code-input"
+                aria-describedby="room-code-helper"
                 disabled={loading}
               />
+              <p className="field-helper" id="room-code-helper">
+                6 characters, letters or numbers. We&apos;ll auto-capitalize for you.
+              </p>
               <Button
                 variant="primary"
                 size="large"
                 onClick={handleJoinRoom}
-                disabled={roomCode.length !== 6 || !connected}
+                disabled={joinDisabled}
+                title={
+                  !connected ? "Reconnect to enable joining" : !roomCodeReady ? "Room code must be 6 characters" : ""
+                }
                 loading={loading}
               >
                 Join Game
               </Button>
+              <p className="field-helper subtle">
+                {!connected
+                  ? "Reconnect to enable joining."
+                  : !roomCodeReady
+                  ? "Enter all 6 characters to continue."
+                  : "Ready to join when you are."}
+              </p>
             </div>
+            {renderConnectionPill("compact")}
             <Button variant="outline" onClick={handleBack}>
               ← Back
             </Button>
@@ -304,19 +405,35 @@ function App() {
 
         {currentView === "waiting" && (
           <div className="waiting-room">
+            <div className="eyebrow">Room ready</div>
             <div className="waiting-room-title">
               <h2>Room Created!</h2>
-              <p>Share your room code and wait for friends to join</p>
+              <p>Share your room code and wait for friends to join.</p>
             </div>
 
+            {renderConnectionPill()}
+
             <div className="room-code-share">
-              <h3>Room Code</h3>
-              <div className="room-code-display">
-                <span className="room-code-text">{roomCode}</span>
-                <Button variant="outline" size="small" onClick={copyRoomCode}>
-                  📋
-                </Button>
+              <div className="room-code-header">
+                <div>
+                  <p className="room-code-label">Room code</p>
+                  <h3>Share this with your opponent</h3>
+                </div>
+                <div className={`players-chip ${playersInRoom > 1 ? "filled" : "waiting"}`}>
+                  <span className="chip-dot" />
+                  {playersInRoom}/2 ready
+                </div>
               </div>
+              <div className="room-code-display">
+                <span className="room-code-text">{roomCode || "------"}</span>
+                <div className="room-code-actions">
+                  <Button variant="secondary" size="small" onClick={copyRoomCode}>
+                    Copy code
+                  </Button>
+                  <p className="room-code-hint">Clipboard ready to share</p>
+                </div>
+              </div>
+              <p className="room-code-subtext">Send the code to your rival. We start as soon as both players join.</p>
             </div>
 
             <div className="room-info">
@@ -333,24 +450,25 @@ function App() {
                 <div className="players-info">
                   <span className="players-label">Players</span>
                   <div className="players-progress">
-                    <div className="player-slots">
-                      <div className="player-slot filled">
-                        <span className="player-icon">👤</span>
-                      </div>
-                      <div className={`player-slot ${playersInRoom > 1 ? "filled" : "empty"}`}>
-                        <span className="player-icon">{playersInRoom > 1 ? "👤" : "⏳"}</span>
+                    <div className="player-chips">
+                      <div className="player-chip filled">You</div>
+                      <div className={`player-chip ${playersInRoom > 1 ? "filled" : "pending"}`}>
+                        {playersInRoom > 1 ? "Opponent joined" : "Waiting for opponent"}
                       </div>
                     </div>
                     <span className="players-count">{playersInRoom}/2</span>
                   </div>
+                  <p className="players-helper">
+                    We&apos;ll start automatically once both players are in the room.
+                  </p>
                 </div>
               </div>
             </div>
 
-            <LoadingSpinner text="Waiting for another player to join..." />
+            <LoadingSpinner size="small" text="Waiting for another player to join..." />
 
             <Button variant="outline" onClick={handleBack}>
-              Leave Room
+              Leave room and return to menu
             </Button>
           </div>
         )}
@@ -370,11 +488,13 @@ function App() {
       </main>
 
       <Modal isOpen={showErrorModal} onClose={() => setShowErrorModal(false)} title="Error">
-        <p className="error-message">{error}</p>
+        <p className="error-message">{error || "Something went wrong. Please retry or return to the menu."}</p>
         <div className="modal-actions">
-          <Button onClick={() => setShowErrorModal(false)}>OK</Button>
+          <Button onClick={() => setShowErrorModal(false)}>Try Again</Button>
         </div>
       </Modal>
+
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

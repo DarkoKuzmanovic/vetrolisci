@@ -15,6 +15,7 @@ const GameGrid = ({
   return (
     <motion.div 
       className={`game-grid ${isOpponent ? 'opponent' : ''}`}
+      role="grid"
       initial={false}
       layout
     >
@@ -22,6 +23,8 @@ const GameGrid = ({
         <motion.div
           key={index}
           className="grid-space"
+          role="gridcell"
+          aria-label={card ? `Card ${card.value}` : `Empty space ${index + 1}`}
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ 
             opacity: 1, 

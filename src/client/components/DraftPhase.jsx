@@ -22,7 +22,7 @@ const DraftPhase = ({ gameState, playerIndex, onCardPick, error, animatingCards 
   // Calculate draft progress
   const totalPicks = 4 // 4 cards per round
   const picksCompleted = draftState.picksThisRound || 0
-  const remainingCards = draftState.revealedCards ? draftState.revealedCards.length : 0
+  const pickNumber = Math.min(picksCompleted + 1, totalPicks)
   
   // Get pickable cards with restrictions
   const pickableCards = draftState.revealedCards ? 
@@ -35,9 +35,19 @@ const DraftPhase = ({ gameState, playerIndex, onCardPick, error, animatingCards 
 
   return (
     <div className="draft-phase">
+      <div className="draft-meta">
+        <div className="draft-pills">
+          <span className="pill">Pick {pickNumber} of {totalPicks}</span>
+          <span className="pill ghost">Order: You → Opponent → You → Opponent</span>
+        </div>
+        <p className={`draft-hint ${isMyTurn ? 'active' : ''}`}>
+          {isMyTurn ? 'Pick a card to place on your grid.' : `Waiting for ${currentPickingPlayerName}...`}
+        </p>
+      </div>
+
       <div className="draft-content">
         {/* Available Cards */}
-        <div className={`available-cards-section ${isMyTurn ? 'my-turn' : ''}`}>
+        <div className={`available-cards-section ${isMyTurn ? 'my-turn' : 'waiting'}`}>
           <div className="section-header">
             <h4>Available Cards {isMyTurn && <span className="turn-indicator">• Your Turn</span>}</h4>
             {/* Error Display - moved here for better visibility */}

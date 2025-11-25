@@ -32,16 +32,24 @@ const CardChoiceModal = ({
   return (
     <Modal isOpen={isOpen} onClose={onCancel} title="Choose which card to keep face-up">
       <div className="card-choice-modal">
-        <p>You already have a face-up card with value {newCard.value}. Choose which one to keep face-up:</p>
+        <p className="modal-helper">
+          Both cards will stay validated. Pick which one stays on top for this number ({newCard.value}).
+        </p>
         
         <div className="card-choices">
           <div className="choice-option" onClick={() => onChoose('keep-existing')}>
-            <h4>Keep Existing Card</h4>
+            <div className="choice-header">
+              <h4>Keep Existing Card</h4>
+              <span className="choice-subtext">Keeps placement, validates beneath card</span>
+            </div>
             {existingCard && <Card card={existingCard} />}
           </div>
           
           <div className="choice-option" onClick={() => onChoose('keep-new')}>
-            <h4>Use New Card</h4>
+            <div className="choice-header">
+              <h4>Use New Card</h4>
+              <span className="choice-subtext">Places new art on top, still validated</span>
+            </div>
             <Card card={newCard} />
           </div>
         </div>

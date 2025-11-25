@@ -2,7 +2,7 @@
   text-align: center;
 }
 
-.card-choice-modal p {
+.card-choice-modal .modal-helper {
   margin-bottom: var(--spacing-xl);
   color: var(--color-black);
   text-shadow: var(--text-shadow-light);
@@ -50,6 +50,17 @@
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
   text-shadow: var(--text-shadow-light);
+}
+
+.choice-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.choice-subtext {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-500);
 }
 
 .choice-option .card {

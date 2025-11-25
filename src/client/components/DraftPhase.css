@@ -21,8 +21,50 @@
 
 @media (min-width: 1024px) {
   .draft-phase {
-    max-width: 900px;
+  max-width: 900px;
   }
+}
+
+/* ===== DRAFT META ===== */
+.draft-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+.draft-pills {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.pill {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--border-radius-lg);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-secondary);
+}
+
+.pill.ghost {
+  background: var(--glass-bg-light);
+  color: var(--color-gray-600);
+}
+
+.draft-hint {
+  color: var(--color-gray-600);
+  font-weight: var(--font-weight-medium);
+}
+
+.draft-hint.active {
+  color: var(--color-primary);
 }
 
 /* ===== SECTION HEADER ===== */
@@ -60,6 +102,11 @@
   color: #4A90E2;
   font-size: var(--font-size-sm);
   font-weight: 600;
+}
+
+.available-cards-section.waiting {
+  opacity: 0.85;
+  border: 1px dashed var(--color-gray-200);
 }
 
 /* ===== CARD-INSPIRED ERROR BANNER ===== */

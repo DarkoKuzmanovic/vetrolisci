@@ -2,11 +2,17 @@
   text-align: center;
 }
 
-.placement-choice-modal p {
-  margin-bottom: var(--spacing-xl);
+.placement-choice-modal .modal-helper {
+  margin-bottom: var(--spacing-sm);
   color: var(--color-black);
   font-weight: var(--font-weight-medium);
   text-shadow: var(--text-shadow-light);
+}
+
+.placement-choice-modal .modal-subtext {
+  margin-bottom: var(--spacing-xl);
+  color: var(--color-gray-600);
+  font-size: var(--font-size-sm);
 }
 
 .placement-card {

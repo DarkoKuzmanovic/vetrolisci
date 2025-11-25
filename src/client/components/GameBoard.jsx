@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 // Component imports
@@ -11,6 +11,7 @@ import ScoreBoard from './ScoreBoard.jsx'
 import TurnScoreModal from './TurnScoreModal.jsx'
 import ScoreboardModal from './ScoreboardModal.jsx'
 import DraftPhase from './DraftPhase.jsx'
+import Button from '../../shared/components/Button.jsx'
 
 // Service imports
 import { PlacementScenario, getPickableCards } from '../../core/placement.js'
@@ -370,6 +371,29 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
     socketClient.emit('continue-from-scoring', { roomCode })
   }
 
+  // ==================== DERIVED STATE (must stay before returns) ====================
+  const currentPlayer = gameState?.players?.[playerIndex]
+  const opponentIndex = playerIndex === 0 ? 1 : 0
+  const opponent = gameState?.players?.[opponentIndex]
+  const currentRound = gameState?.currentRound || 1
+  const isMyTurn =
+    gameState?.currentPickingPlayer?.index === playerIndex || gameState?.currentPlayer === playerIndex
+
+  const turnLabel = isMyTurn
+    ? 'Your turn to pick'
+    : `Waiting for ${gameState?.currentPickingPlayer?.name || 'opponent'}`
+
+  const turnSubtext = gameState?.draftState?.phase === 'complete' ? 'Placement phase' : 'Draft phase'
+
+  const roundIndicators = useMemo(
+    () =>
+      [1, 2, 3].map((round) => ({
+        round,
+        state: round === currentRound ? 'current' : round < currentRound ? 'completed' : 'upcoming'
+      })),
+    [currentRound]
+  )
+
   // ==================== RENDER STATES ====================
   
   if (loading) {
@@ -391,7 +415,7 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
     )
   }
 
-  if (!gameState) {
+  if (!gameState || !currentPlayer || !opponent) {
     return (
       <div className="game-board error">
         <h2>Game Not Found</h2>
@@ -413,10 +437,6 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
   }
 
   // ==================== MAIN RENDER ====================
-  
-  const currentPlayer = gameState.players[playerIndex]
-  const opponentIndex = playerIndex === 0 ? 1 : 0
-  const opponent = gameState.players[opponentIndex]
 
   return (
     <>
@@ -429,33 +449,78 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
         )}
 
         {/* Enhanced Game Status Card */}
-        <motion.div 
+        <motion.div
           className="game-status-card"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="game-status-left">
-            <span className="game-icon">🎴</span>
-            <div className="game-info">
-              <h2>Vetrolisci</h2>
-              <span className="room-code">Room: {roomCode}</span>
+          <div className="status-left">
+            <div className="title-row">
+              <span className="game-icon">🎴</span>
+              <div className="title-copy">
+                <h2>Vetrolisci</h2>
+                <div className="room-chip">Room {roomCode}</div>
+              </div>
             </div>
           </div>
-          
-          <div className="game-status-center">
-            <div className="round-progress">
-              <span className="round-text">Round {gameState.currentRound || 1}</span>
+
+          <div className="status-center">
+            <div className={`turn-pill ${isMyTurn ? 'my-turn' : 'waiting'}`}>
+              <span className="pill-icon">{isMyTurn ? '🎯' : '⏳'}</span>
+              <div className="pill-copy">
+                <strong>{turnLabel}</strong>
+                <small>{turnSubtext}</small>
+              </div>
             </div>
           </div>
-          
-          <div className="game-status-right">
-            <div className={`turn-indicator ${(gameState.currentPickingPlayer?.index === playerIndex || gameState.currentPlayer === playerIndex) ? 'my-turn' : 'opponent-turn'}`}>
-              {(gameState.currentPickingPlayer?.index === playerIndex || gameState.currentPlayer === playerIndex) ? 'Your Turn' : 'Opponent Turn'}
+
+          <div className="status-right">
+            <div className="round-chip-group">
+              {roundIndicators.map(({ round, state }) => (
+                <div key={round} className={`round-chip ${state}`}>
+                  <span>{round}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="header-controls">
+              <button
+                className={`header-control ${soundEnabled ? 'active' : ''}`}
+                onClick={toggleSound}
+                title={soundEnabled ? 'Disable sound effects' : 'Enable sound effects'}
+              >
+                <img src="/icons/sound.png" alt="Sound Effects" />
+                <span>SFX</span>
+              </button>
+              <button
+                className={`header-control ${musicEnabled ? 'active' : ''}`}
+                onClick={toggleMusic}
+                title={musicEnabled ? 'Disable music' : 'Enable music'}
+              >
+                <img src="/icons/music.png" alt="Music" />
+                <span>Music</span>
+              </button>
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={() => setShowScoreboard(true)}
+                className="header-control-btn"
+              >
+                Scoreboard
+              </Button>
+              <Button
+                variant="outline"
+                size="small"
+                onClick={onBackToMenu}
+                className="header-control-btn danger"
+              >
+                Leave
+              </Button>
             </div>
           </div>
         </motion.div>
-        
+
         {/* Game Content Container */}
         <motion.div 
           className="game-content"
@@ -518,6 +583,13 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
                 }
               }}
             >
+              <div className="grid-header">
+                <div>
+                  <p className="grid-eyebrow">{isMyTurn ? 'Your turn' : 'Your grid'}</p>
+                  <h3>Your board</h3>
+                </div>
+                <span className="grid-subtext">Place cards by their number</span>
+              </div>
               <GameGrid
                 grid={currentPlayer.grid}
                 newlyPlacedCards={newlyPlacedCards}
@@ -540,6 +612,13 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
                 }
               }}
             >
+              <div className="grid-header">
+                <div>
+                  <p className="grid-eyebrow">Opponent</p>
+                  <h3>Rival board</h3>
+                </div>
+                <span className="grid-subtext muted">See their placements in real time</span>
+              </div>
               <GameGrid
                 grid={opponent.grid}
                 isOpponent={true}
@@ -552,44 +631,6 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
           </motion.div>
         </motion.div>
 
-        {/* Control Buttons */}
-        <div className="bottom-right-controls">
-          {/* Audio Controls */}
-          <button 
-            className={`control-button audio-button ${soundEnabled ? 'enabled' : 'disabled'}`}
-            onClick={toggleSound}
-            title={soundEnabled ? 'Disable sound effects' : 'Enable sound effects'}
-            style={{ bottom: '180px', right: '20px' }}
-          >
-            <img src="/icons/sound.png" alt="Sound Effects" style={{ width: '20px', height: '20px' }} />
-          </button>
-          <button 
-            className={`control-button audio-button ${musicEnabled ? 'enabled' : 'disabled'}`}
-            onClick={toggleMusic}
-            title={musicEnabled ? 'Disable music' : 'Enable music'}
-            style={{ bottom: '120px', right: '20px' }}
-          >
-            <img src="/icons/music.png" alt="Music" style={{ width: '20px', height: '20px' }} />
-          </button>
-          
-          {/* Utility Controls */}
-          <button 
-            className="control-button scoreboard-button"
-            onClick={() => setShowScoreboard(true)}
-            title="View detailed scoreboard"
-            style={{ bottom: '60px', right: '20px' }}
-          >
-            <img src="/icons/score.png" alt="Scoreboard" style={{ width: '20px', height: '20px' }} />
-          </button>
-          
-          <button 
-            className="control-button back-to-menu-button"
-            onClick={onBackToMenu}
-            style={{ bottom: '60px', left: '20px' }}
-          >
-            <img src="/icons/back-to-menu.svg" alt="Back to Menu" style={{ width: '20px', height: '20px' }} />
-          </button>
-        </div>
       </div>
 
       {/* Modals - Rendered outside game container for proper overlay positioning */}

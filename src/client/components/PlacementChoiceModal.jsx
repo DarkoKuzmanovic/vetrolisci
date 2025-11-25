@@ -32,7 +32,10 @@ const PlacementChoiceModal = ({
   return (
     <Modal isOpen={isOpen} onClose={onCancel} title="Choose placement position">
       <div className="placement-choice-modal">
-        <p>This card would be placed face-down. Choose an empty position:</p>
+        <p className="modal-helper">
+          This number is already validated. Place this card face-down on any empty space.
+        </p>
+        <p className="modal-subtext">Pick an open slot (1–9) to tuck this card.</p>
         
         <div className="placement-card">
           <Card card={card} />
@@ -42,7 +45,7 @@ const PlacementChoiceModal = ({
           {Array.from({ length: 9 }, (_, index) => (
             <Button
               key={index}
-              variant={availablePositions.includes(index) ? "primary" : "disabled"}
+              variant={availablePositions.includes(index) ? "primary" : "secondary"}
               disabled={!availablePositions.includes(index)}
               onClick={() => availablePositions.includes(index) && onChoose(index)}
               className="position-button"
