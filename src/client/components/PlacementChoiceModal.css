@@ -18,7 +18,7 @@
 .placement-card {
   display: flex;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-xl);
 }
 
 .placement-card .card {
@@ -26,22 +26,28 @@
   height: 160px;
 }
 
+/* Card-inspired position grid */
 .position-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  max-width: 200px;
-  margin: 0 auto 20px auto;
+  gap: var(--spacing-md);
+  max-width: 240px;
+  margin: 0 auto var(--spacing-xl) auto;
+  padding: var(--spacing-lg);
+  background: var(--glass-bg-light);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-md);
 }
 
 .position-button {
   aspect-ratio: 1;
-  font-size: 18px;
-  font-weight: bold;
-  min-height: 50px;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  min-height: 56px;
   /* Card-inspired button styling */
   background: var(--card-bg);
-  border: var(--card-border);
+  border: 2px solid var(--color-gray-200);
   border-radius: var(--border-radius-md);
   color: var(--color-black);
   text-shadow: var(--text-shadow-light);
@@ -55,20 +61,44 @@
   background: var(--card-bg);
   border-color: var(--color-primary);
   /* Card-like 3D hover effect */
-  transform: perspective(1000px) rotateX(2deg) translateY(-3px) scale(1.02);
-  box-shadow: 
-    var(--card-shadow-hover),
-    0 10px 20px rgba(0, 0, 0, 0.15),
-    0 0 0 2px var(--color-primary-light);
+  transform: perspective(1000px) rotateX(2deg) translateY(-3px) scale(1.05);
+  box-shadow: var(--card-shadow-hover), 0 10px 20px rgba(0, 0, 0, 0.15), 0 0 0 2px var(--color-primary-light);
+}
+
+.position-button:active:not(:disabled) {
+  transform: perspective(1000px) translateY(-1px) scale(1.02);
+  box-shadow: var(--card-shadow-default);
 }
 
 .position-button:disabled {
-  opacity: 0.3;
+  opacity: 0.35;
   cursor: not-allowed;
+  background: var(--color-gray-100);
+  border-color: var(--color-gray-200);
+  color: var(--color-gray-400);
+  box-shadow: none;
 }
 
 .modal-actions {
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: var(--spacing-md);
+}
+
+@media (max-width: 480px) {
+  .position-grid {
+    max-width: 200px;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+  }
+
+  .position-button {
+    min-height: 48px;
+    font-size: var(--font-size-base);
+  }
+
+  .placement-card .card {
+    width: 100px;
+    height: 140px;
+  }
 }

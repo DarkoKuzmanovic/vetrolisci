@@ -1,13 +1,8 @@
-@keyframes confetti {
-  0% {
-    transform: translateY(0) rotate(0deg);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-100px) rotate(720deg);
-    opacity: 0;
-  }
-}
+/* ========================================
+   CONFETTI COMPONENT
+   Celebratory particle effects
+   Card-themed colors for visual coherence
+   ======================================== */
 
 .confetti-container {
   position: absolute;
@@ -16,45 +11,121 @@
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: var(--z-modal); /* 1000, below modals */
+  z-index: var(--z-elevated);
+  overflow: hidden;
 }
 
 .confetti-piece {
   position: absolute;
-  width: 8px;
-  height: 8px;
-  animation: confetti 1.5s ease-out forwards;
+  width: 10px;
+  height: 10px;
+  will-change: transform, opacity;
+  animation: confettiFall 1.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
+/* Different shapes for variety */
+.confetti-piece:nth-child(odd) {
+  border-radius: 50%;
+}
+
+.confetti-piece:nth-child(even) {
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+
+.confetti-piece:nth-child(3n) {
+  width: 6px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+/* Card-themed colors - matching the game's card colors */
 .confetti-piece:nth-child(1) {
-  background: #ff6b6b;
+  background: var(--color-card-blue, #3b82f6);
   animation-delay: 0s;
 }
 .confetti-piece:nth-child(2) {
-  background: #4ecdc4;
-  animation-delay: 0.1s;
+  background: var(--color-card-green, #10b981);
+  animation-delay: 0.08s;
 }
 .confetti-piece:nth-child(3) {
-  background: #45b7d1;
-  animation-delay: 0.2s;
+  background: var(--color-card-red, #ef4444);
+  animation-delay: 0.16s;
 }
 .confetti-piece:nth-child(4) {
-  background: #96ceb4;
-  animation-delay: 0.3s;
+  background: var(--color-card-yellow, #f59e0b);
+  animation-delay: 0.24s;
 }
 .confetti-piece:nth-child(5) {
-  background: #feca57;
-  animation-delay: 0.4s;
+  background: var(--color-primary, #6366f1);
+  animation-delay: 0.32s;
 }
 .confetti-piece:nth-child(6) {
-  background: #ff9ff3;
-  animation-delay: 0.5s;
+  background: var(--color-success, #10b981);
+  animation-delay: 0.4s;
 }
 .confetti-piece:nth-child(7) {
-  background: #54a0ff;
-  animation-delay: 0.6s;
+  background: #fcd34d; /* Gold accent */
+  animation-delay: 0.48s;
 }
 .confetti-piece:nth-child(8) {
-  background: #5f27cd;
-  animation-delay: 0.7s;
+  background: #a78bfa; /* Purple accent */
+  animation-delay: 0.56s;
+}
+
+/* Main confetti animation - upward burst with gravity */
+@keyframes confettiFall {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-120px) translateX(var(--drift, 20px)) rotate(720deg) scale(0.5);
+    opacity: 0;
+  }
+}
+
+/* Add horizontal drift variation */
+.confetti-piece:nth-child(1) {
+  --drift: -30px;
+}
+.confetti-piece:nth-child(2) {
+  --drift: 25px;
+}
+.confetti-piece:nth-child(3) {
+  --drift: -15px;
+}
+.confetti-piece:nth-child(4) {
+  --drift: 35px;
+}
+.confetti-piece:nth-child(5) {
+  --drift: -25px;
+}
+.confetti-piece:nth-child(6) {
+  --drift: 15px;
+}
+.confetti-piece:nth-child(7) {
+  --drift: -35px;
+}
+.confetti-piece:nth-child(8) {
+  --drift: 30px;
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .confetti-piece {
+    animation: confettiFade 0.5s ease-out forwards;
+  }
+
+  @keyframes confettiFade {
+    0% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
 }

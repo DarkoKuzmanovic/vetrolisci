@@ -1,62 +1,71 @@
-import React from 'react'
-import './TurnScoreModal.css'
+import React from "react";
+import Modal from "../../shared/components/Modal.jsx";
+import Button from "../../shared/components/Button.jsx";
+import "./TurnScoreModal.css";
 
-const TurnScoreModal = ({ gameState, playerIndex, onContinue }) => {
-  if (!gameState || !gameState.roundScores) return null
+const TurnScoreModal = ({ isOpen, gameState, playerIndex, onContinue }) => {
+  if (!isOpen || !gameState || !gameState.roundScores) return null;
 
-  const currentPlayer = gameState.players[playerIndex]
-  const opponentIndex = playerIndex === 0 ? 1 : 0
-  const opponent = gameState.players[opponentIndex]
+  const currentPlayer = gameState.players[playerIndex];
+  const opponentIndex = playerIndex === 0 ? 1 : 0;
+  const opponent = gameState.players[opponentIndex];
 
-  const playerScore = gameState.roundScores.find(score => score.playerIndex === playerIndex)
-  const opponentScore = gameState.roundScores.find(score => score.playerIndex === opponentIndex)
+  const playerScore = gameState.roundScores.find((score) => score.playerIndex === playerIndex);
+  const opponentScore = gameState.roundScores.find((score) => score.playerIndex === opponentIndex);
 
   return (
-    <div className="modal-overlay">
+    <Modal
+      isOpen={isOpen}
+      onClose={onContinue}
+      title={`Turn Complete - Round ${gameState.currentRound}`}
+      showCloseButton={false}
+    >
       <div className="turn-score-modal">
-        <div className="modal-header">
-          <h2>Turn Complete - Round {gameState.currentRound}</h2>
-        </div>
-        
-        <div className="scores-container">
-          <div className="player-score-section">
-            <h3>{currentPlayer.name} (You)</h3>
-            <div className="score-display">
-              <div className="round-score">
+        <div className="turn-scores-container">
+          <div className="turn-player-section">
+            <h4>{currentPlayer.name} (You)</h4>
+            <div className="turn-score-display">
+              <div className="turn-round-score">
                 <strong>This Turn: {playerScore?.score || 0} points</strong>
               </div>
               {playerScore?.breakdown && (
-                <div className="score-breakdown">
-                  <div className="breakdown-item">
-                    Validated Cards: {playerScore.breakdown.validatedNumbers || 0}
+                <div className="turn-breakdown">
+                  <div className="turn-breakdown-item">
+                    <span className="breakdown-label">Validated Cards</span>
+                    <span className="breakdown-value">{playerScore.breakdown.validatedNumbers || 0}</span>
                   </div>
-                  <div className="breakdown-item">
-                    Symbol Points: {playerScore.breakdown.symbols || 0}
+                  <div className="turn-breakdown-item">
+                    <span className="breakdown-label">Symbol Points</span>
+                    <span className="breakdown-value">{playerScore.breakdown.symbols || 0}</span>
                   </div>
-                  <div className="breakdown-item">
-                    Color Bonus: {playerScore.breakdown.colorBonus || 0}
+                  <div className="turn-breakdown-item">
+                    <span className="breakdown-label">Color Bonus</span>
+                    <span className="breakdown-value">{playerScore.breakdown.colorBonus || 0}</span>
                   </div>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="player-score-section">
-            <h3>{opponent.name}</h3>
-            <div className="score-display">
-              <div className="round-score">
+          <div className="turn-player-section">
+            <h4>{opponent.name}</h4>
+            <div className="turn-score-display">
+              <div className="turn-round-score">
                 <strong>This Turn: {opponentScore?.score || 0} points</strong>
               </div>
               {opponentScore?.breakdown && (
-                <div className="score-breakdown">
-                  <div className="breakdown-item">
-                    Validated Cards: {opponentScore.breakdown.validatedNumbers || 0}
+                <div className="turn-breakdown">
+                  <div className="turn-breakdown-item">
+                    <span className="breakdown-label">Validated Cards</span>
+                    <span className="breakdown-value">{opponentScore.breakdown.validatedNumbers || 0}</span>
                   </div>
-                  <div className="breakdown-item">
-                    Symbol Points: {opponentScore.breakdown.symbols || 0}
+                  <div className="turn-breakdown-item">
+                    <span className="breakdown-label">Symbol Points</span>
+                    <span className="breakdown-value">{opponentScore.breakdown.symbols || 0}</span>
                   </div>
-                  <div className="breakdown-item">
-                    Color Bonus: {opponentScore.breakdown.colorBonus || 0}
+                  <div className="turn-breakdown-item">
+                    <span className="breakdown-label">Color Bonus</span>
+                    <span className="breakdown-value">{opponentScore.breakdown.colorBonus || 0}</span>
                   </div>
                 </div>
               )}
@@ -64,14 +73,14 @@ const TurnScoreModal = ({ gameState, playerIndex, onContinue }) => {
           </div>
         </div>
 
-        <div className="modal-actions">
-          <button className="continue-button" onClick={onContinue}>
+        <div className="turn-modal-actions">
+          <Button variant="success" size="large" onClick={onContinue}>
             Continue to Next Turn
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
-  )
-}
+    </Modal>
+  );
+};
 
-export default TurnScoreModal
+export default TurnScoreModal;

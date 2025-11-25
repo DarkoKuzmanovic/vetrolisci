@@ -268,59 +268,6 @@ function App() {
 
   return (
     <div className="app">
-      {currentView === "game" && gameData && (
-        <header className="app-header">
-          <div className="header-left">
-            <h1>🎴 Vetrolisci</h1>
-            <p>Room: {gameData.roomCode}</p>
-          </div>
-
-          <div className="header-center">
-            {gameData.gameState?.draftState?.revealedCards && (
-              <div
-                className={`turn-indicator ${
-                  gameData.gameState.currentPickingPlayer?.index === gameData.playerIndex ? "my-turn" : "waiting"
-                }`}
-              >
-                {gameData.gameState.currentPickingPlayer?.index === gameData.playerIndex ? (
-                  <span className="my-turn-text">🎯 Your turn to pick!</span>
-                ) : (
-                  <span className="waiting-text">
-                    ⏳ Waiting for {gameData.gameState.currentPickingPlayer?.name || "Unknown"}
-                    <span className="loading-dots">
-                      <span></span>
-                      <span></span>
-                      <span></span>
-                    </span>
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="header-right">
-            {gameData.gameState && (
-              <div className="game-progress">
-                <div className="round-indicators">
-                  {[1, 2, 3].map((round) => (
-                    <div
-                      key={round}
-                      className={`round-indicator ${round === gameData.gameState.currentRound ? "current" : ""} ${
-                        round < gameData.gameState.currentRound ? "completed" : ""
-                      }`}
-                    >
-                      {round}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {!connected && <div className="connection-status offline">⚠️ Disconnected from server</div>}
-          </div>
-        </header>
-      )}
-
       <main className="app-main">
         {currentView === "menu" && (
           <div className="menu">
@@ -458,9 +405,7 @@ function App() {
                     </div>
                     <span className="players-count">{playersInRoom}/2</span>
                   </div>
-                  <p className="players-helper">
-                    We&apos;ll start automatically once both players are in the room.
-                  </p>
+                  <p className="players-helper">We&apos;ll start automatically once both players are in the room.</p>
                 </div>
               </div>
             </div>
@@ -478,7 +423,7 @@ function App() {
             roomCode={gameData.roomCode}
             playerIndex={gameData.playerIndex}
             onBackToMenu={handleBack}
-            showHeader={false}
+            showHeader={true}
             initialGameState={gameData.gameState}
             onGameStateUpdate={(gameState) => {
               setGameData((prev) => ({ ...prev, gameState }));
