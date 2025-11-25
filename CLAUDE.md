@@ -2,18 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# The Gaming Nook - Multiplayer Gaming Platform
+# Vetrolisci - Multiplayer Card Duel
 
 ## Project Overview
 
-**The Gaming Nook** is a multiplayer gaming platform with isolated game architecture, currently featuring **Vetrolisci** (a Pixies card game implementation) as the primary game. The platform uses a fresh, simplified architecture starting from a clean foundation while preserving proven game logic from legacy implementations.
+**Vetrolisci** is a dedicated two-player Pixies card duel. The repo now focuses solely on Vetrolisci with a simplified, in-memory architecture and preserved game logic from the prior implementation.
 
 ## Recent Development History
 
-### Major Revamp (Current Implementation)
-- **Started fresh** with clean isolated architecture after legacy multiplayer issues
-- **Preserved working game logic** from `/legacy/` folder containing proven Vetrolisci implementation
-- **Isolated game system**: Each game in `/src/games/` is self-contained with client/server/shared folders
+### Major Revamp & Reorganization (Current Implementation)
+- **Started fresh** with a clean architecture focused only on Vetrolisci multiplayer
+- **Preserved working Vetrolisci logic** while modernizing the socket and UI layers
+- **Reorganized structure**: Flat, modular architecture with separated concerns (client, server, shared, core)
 - **Simple tech stack**: React + Vite (frontend) + Express + Socket.IO (backend) - no complex frameworks or databases
 
 ### Key Issues Resolved
@@ -35,36 +35,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current Architecture (Post-Revamp)
 
-### Isolated Game System
+### Project Structure (Reorganized)
 ```
 src/
-├── shared/
-│   ├── client/               # Shared client components (Modal, Button, etc.)
-│   └── server/               # Main server with room management
-│       └── main.js          # Express + Socket.IO server (port 8001)
-└── games/
-    └── vetrolisci/          # Self-contained Vetrolisci game
-        ├── client/          # React components for Vetrolisci
-        │   └── components/  # GameBoard, Card, modals, etc.
-        ├── server/          # Vetrolisci server logic
-        │   └── vetrolisci-server.js
-        └── shared/          # Game logic shared between client/server
-            ├── cards.js     # 70-card deck with image mapping
-            ├── draft.js     # 4-card draft system
-            ├── placement.js # Card placement scenarios + validation
-            ├── scoring.js   # Complex scoring with color zones
-            └── validation.js # Card validation rules
+├── client/                  # Game-specific UI components
+│   ├── components/          # GameBoard, Card, modals, etc.
+│   └── services/            # audio.js
+├── server/                  # Backend services
+│   ├── main.js              # Express + Socket.IO server (port 8001)
+│   └── vetrolisci-server.js # Game logic server
+├── shared/                  # Reusable UI components & utilities
+│   ├── components/          # Modal, Button, LoadingSpinner
+│   ├── utils/               # socket-client.js
+│   └── styles/              # theme.css
+├── core/                    # Game logic shared between client/server
+│   ├── cards.js             # 70-card deck with image mapping
+│   ├── draft.js             # 4-card draft system
+│   ├── placement.js         # Card placement scenarios + validation
+│   ├── scoring.js           # Complex scoring with color zones
+│   └── validation.js        # Card validation rules
+├── App.jsx                  # Main app with room system
+├── main.jsx                 # React entry point
+└── index.html               # HTML entry point
 ```
 
 ### Frontend (React + Vite)
 - **Entry Point**: `src/index.html` → `src/main.jsx` → `src/App.jsx`
-- **Room System**: Create/join rooms with room codes, host/guest roles
-- **Game Integration**: Dynamic loading of game components based on room type
-- **Real-time Communication**: Socket.IO client wrapper in `shared/client/utils/socket-client.js`
+- **Room System**: Create/join Vetrolisci rooms with room codes, host/guest roles
+- **Game Integration**: `GameBoard` component drives gameplay UI once the room is full
+- **Real-time Communication**: Socket.IO client wrapper in `src/shared/utils/socket-client.js`
 
 ### Backend (Node.js + Express + Socket.IO)
-- **Entry Point**: `src/shared/server/main.js` - handles room management and routing
-- **Game Servers**: Individual game logic in `src/games/{game}/server/`
+- **Entry Point**: `src/server/main.js` - handles room management and routing
+- **Game Server**: Vetrolisci logic in `src/server/vetrolisci-server.js`
 - **In-memory State**: Maps for rooms, players, game states
 - **Real-time Features**: Socket.IO for live multiplayer with room isolation
 
@@ -120,12 +123,12 @@ npm run typecheck
 
 ### UI Components (Current Implementation)
 
-#### Shared Components (`src/shared/client/components/`)
+#### Shared Components (`src/shared/components/`)
 - **Modal**: Reusable modal wrapper with overlay and close handling
 - **Button**: Styled button component with variants (primary, outline, disabled)
 - **LoadingSpinner**: Loading animation component
 
-#### Vetrolisci Components (`src/games/vetrolisci/client/components/`)
+#### Game Components (`src/client/components/`)
 - **GameBoard**: Main game container with socket integration and state management
 - **GameGrid**: 3x3 card grid with placement logic and animations  
 - **Card**: Individual card component with image loading and validation states
@@ -172,59 +175,42 @@ npm run typecheck
 - **Error handling** with user-friendly messages
 - **Responsive UI** that works on different screen sizes
 
-### Legacy Reference
-- **Complete working implementation** preserved in `/legacy/` folder
-- **Asset compatibility**: Current implementation reuses proven card images and game logic
-- **Reference for advanced features**: Audio, animations, keyboard shortcuts, fullscreen
-
 ### Potential Next Steps
 - Audio system integration (music, sound effects)
 - Keyboard shortcuts and accessibility features  
 - Visual polish and animations
-- Additional game modes or games
 - Deployment configuration for production
 
-## Current Project Structure (Post-Revamp)
+## Current Project Structure (Post-Reorganization)
 
 ```
 src/
 ├── index.html                    # Entry point
 ├── main.jsx                      # React entry
 ├── App.jsx                       # Main app with room system
-├── shared/
-│   ├── client/
-│   │   ├── components/          # Reusable UI components
-│   │   │   ├── Modal.jsx        # Modal wrapper
-│   │   │   ├── Button.jsx       # Styled buttons  
-│   │   │   └── LoadingSpinner.jsx
-│   │   └── utils/
-│   │       └── socket-client.js # Socket.IO wrapper
-│   └── server/
-│       └── main.js              # Express + Socket.IO server
-├── games/
-│   └── vetrolisci/              # Self-contained Vetrolisci game
-│       ├── client/
-│       │   └── components/      # Vetrolisci UI components
-│       │       ├── GameBoard.jsx       # Main game interface
-│       │       ├── GameGrid.jsx        # 3x3 card grid
-│       │       ├── Card.jsx            # Individual cards
-│       │       ├── CardChoiceModal.jsx # Duplicate card choices
-│       │       ├── PlacementChoiceModal.jsx # Position selection
-│       │       ├── RoundCompleteModal.jsx   # Round summaries
-│       │       └── ScoreBoard.jsx      # Score tracking
-│       ├── server/
-│       │   └── vetrolisci-server.js    # Game server logic
-│       └── shared/              # Shared game logic
-│           ├── cards.js         # 70-card deck + images
-│           ├── draft.js         # 4-card draft system
-│           ├── placement.js     # Placement scenarios + validation
-│           ├── scoring.js       # Complex scoring system
-│           └── validation.js    # Card validation rules
-├── public/
-│   ├── vetrolisci/cards/       # Card images (moved from legacy)
-│   └── shared/icons/           # UI icons including restricted.png
-└── legacy/                     # Preserved working implementation
-    └── src/                    # Reference for advanced features
+├── client/                       # Game-specific UI components
+│   ├── components/              # GameBoard, Card, modals, etc.
+│   └── services/                # audio.js
+├── server/                       # Backend services
+│   ├── main.js                  # Express + Socket.IO server
+│   └── vetrolisci-server.js     # Game logic server
+├── shared/                       # Reusable UI components & utilities
+│   ├── components/              # Modal, Button, LoadingSpinner
+│   ├── utils/                   # socket-client.js
+│   └── styles/                  # theme.css
+└── core/                         # Game logic shared between client/server
+    ├── cards.js                 # 70-card deck + images
+    ├── draft.js                 # 4-card draft system
+    ├── placement.js             # Placement scenarios + validation
+    ├── scoring.js               # Complex scoring system
+    └── validation.js            # Card validation rules
+
+public/
+├── cards/                       # Card images (fronts/ and backs/)
+├── icons/                       # UI icons including restricted.png
+├── audio/                       # Game audio files
+├── background.jpg               # Game background
+└── background3.jpg              # Alternate background
 ```
 
 ## Important Notes for Future Development
@@ -238,16 +224,18 @@ npm run client      # Client only (Vite dev server)
 ```
 
 ### Game Assets (Current Location)
-- **Card Images**: `public/vetrolisci/cards/fronts/` and `public/vetrolisci/cards/backs/`
-- **Icons**: `public/shared/icons/` (including `restricted.png` for card overlays)
+- **Card Images**: `public/cards/fronts/` and `public/cards/backs/`
+- **Icons**: `public/icons/` (including `restricted.png` for card overlays)
 - **Naming**: `{color}-{value}.png`, `{color}-{value}-alt.png`, `{color}-{value}-special.png`
 
 ### Key Files to Reference
-- **Main server**: `src/shared/server/main.js` (Express + Socket.IO + room management)
-- **Vetrolisci server**: `src/games/vetrolisci/server/vetrolisci-server.js` (game logic)
+- **Main server**: `src/server/main.js` (Express + Socket.IO + room management)
+- **Vetrolisci server**: `src/server/vetrolisci-server.js` (game logic)
 - **Main client**: `src/App.jsx` (room creation/joining interface)
-- **Game client**: `src/games/vetrolisci/client/components/GameBoard.jsx` (main game UI)
-- **Game logic**: `src/games/vetrolisci/shared/placement.js` (placement scenarios + validation)
+- **Game client**: `src/client/components/GameBoard.jsx` (main game UI)
+- **Game logic**: `src/core/placement.js` (placement scenarios + validation)
+- **Shared components**: `src/shared/components/` (Modal, Button, LoadingSpinner)
+- **Socket client**: `src/shared/utils/socket-client.js` (Socket.IO wrapper)
 
 ### Critical Bug Fixes Applied
 1. **Fixed auto-validation bug** in `validation.js` - cards only validate with face-down cards underneath
