@@ -41,28 +41,36 @@
 }
 
 .score-value {
-  font-size: 20px;
-  font-weight: bold;
-  color: #28a745;
-  margin-bottom: 8px;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-success);
+  margin-bottom: var(--spacing-sm);
+  text-shadow: var(--text-shadow-light);
 }
 
 .score-breakdown {
   display: flex;
   justify-content: space-around;
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   color: var(--color-gray-600);
+  gap: var(--spacing-sm);
 }
 
 .score-breakdown span {
   /* Mini card-like badges */
   background: var(--card-bg);
-  border: 1px solid var(--color-gray-200);
-  padding: 4px 8px;
+  border: var(--card-border);
+  padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--border-radius-sm);
   color: var(--color-gray-700);
   font-weight: var(--font-weight-medium);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: var(--transition-all);
+}
+
+.score-breakdown span:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .next-round-info {
@@ -81,4 +89,43 @@
 .modal-actions {
   display: flex;
   justify-content: center;
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-lg);
+  border-top: var(--card-border);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 480px) {
+  .round-complete-modal {
+    padding: var(--spacing-md);
+  }
+
+  .round-complete-modal h3 {
+    font-size: var(--font-size-xl);
+  }
+
+  .player-round-score {
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .score-breakdown {
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+
+  .next-round-info {
+    padding: var(--spacing-md);
+  }
+}
+
+/* ===== ACCESSIBILITY ===== */
+@media (prefers-reduced-motion: reduce) {
+  .player-round-score:hover {
+    transform: none;
+  }
+
+  .score-breakdown span:hover {
+    transform: none;
+  }
 }

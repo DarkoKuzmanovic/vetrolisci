@@ -239,16 +239,16 @@ A prioritized list of UI improvements organized into sprints for iterative deliv
 | Component            | CSS Variables | Glassmorphism | Card-Inspired | Mobile |
 | -------------------- | ------------- | ------------- | ------------- | ------ |
 | GameBoard            | ✅            | ✅            | ✅            | ✅     |
-| GameGrid             | ✅            | ✅            | ⚠️ Partial    | ✅     |
+| GameGrid             | ✅            | ✅            | ✅            | ✅     |
 | Card                 | ✅            | N/A           | ✅            | ✅     |
 | DraftPhase           | ✅            | ✅            | ✅            | ✅     |
 | Modal (base)         | ✅            | ✅            | ✅            | ✅     |
-| ScoreBoard           | ❌            | ⚠️ Partial    | ❌            | ⚠️     |
+| ScoreBoard           | ✅            | ✅            | ✅            | ✅     |
 | ScoreboardModal      | ✅            | ✅            | ✅            | ✅     |
 | CardChoiceModal      | ✅            | ✅            | ✅            | ✅     |
 | PlacementChoiceModal | ✅            | ✅            | ✅            | ✅     |
 | TurnScoreModal       | ✅            | ✅            | ✅            | ✅     |
-| RoundCompleteModal   | ✅            | ⚠️            | ✅            | ⚠️     |
+| RoundCompleteModal   | ✅            | ✅            | ✅            | ✅     |
 
 **Legend**: ✅ Complete | ⚠️ Partial | ❌ Needs Work | ❓ Needs Review
 

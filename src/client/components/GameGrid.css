@@ -2,17 +2,22 @@
   --grid-cell-size: clamp(80px, 10vw, 120px);
   --grid-gap: var(--spacing-md);
 
+  /* Card-inspired grid container */
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-xl), 0 25px 50px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  transform-style: preserve-3d;
+  transform: perspective(1000px) translateY(-2px);
+  transition: var(--transition-all);
+
   display: grid;
   grid-template-columns: repeat(3, var(--grid-cell-size));
   gap: var(--grid-gap);
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
-  padding: var(--spacing-lg);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--border-radius-2xl);
-  box-shadow: var(--shadow-lg);
+  padding: var(--spacing-2xl);
   box-sizing: border-box;
 }
 
@@ -20,34 +25,39 @@
   .game-grid {
     --grid-cell-size: clamp(90px, 11vw, 130px);
     --grid-gap: var(--spacing-lg);
-    padding: var(--spacing-xl);
+    padding: var(--spacing-2xl);
   }
 }
 
 @media (min-width: 1024px) {
   .game-grid {
     --grid-cell-size: clamp(100px, 9vw, 140px);
-    padding: var(--spacing-2xl);
+    padding: var(--spacing-3xl);
   }
 }
 
 .game-grid.opponent {
-  background: var(--glass-bg-light);
-  border-color: var(--glass-border-light);
-  box-shadow: var(--shadow-md);
+  /* Card-inspired opponent grid */
+  background: var(--card-bg);
+  border: var(--card-border);
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(0, 0, 0, 0.05);
   opacity: 0.92;
+  transform: perspective(1000px) translateY(-1px);
 }
 
 .grid-space {
+  /* Card-inspired grid space */
   width: var(--grid-cell-size);
   height: calc(var(--grid-cell-size) * 1.35);
   border: 2px dashed var(--color-gray-300);
-  border-radius: var(--border-radius-lg);
+  border-radius: var(--border-radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(249, 250, 251, 0.8) 100%);
-  box-shadow: var(--shadow-sm);
+  background: var(--card-bg);
+  border: var(--card-border);
+  box-shadow: var(--card-shadow-default);
+  transform-style: preserve-3d;
   transition: var(--transition-all);
   position: relative;
   overflow: visible;
@@ -62,9 +72,10 @@
 .grid-space.empty:hover {
   border-color: var(--color-primary);
   border-style: solid;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0.04) 100%);
-  box-shadow: 0 0 0 3px var(--color-primary-light), var(--shadow-md), inset 0 0 20px rgba(99, 102, 241, 0.05);
-  transform: scale(1.02);
+  background: var(--card-bg);
+  border-color: var(--color-primary);
+  box-shadow: var(--card-shadow-hover), 0 0 0 2px var(--color-primary-light);
+  transform: translateY(-1px) scale(1.02);
 }
 
 .grid-space.empty:hover .space-number {
@@ -81,38 +92,40 @@
 
 /* Opponent grid spaces - non-interactive appearance */
 .game-grid.opponent .grid-space {
-  background: linear-gradient(135deg, rgba(243, 244, 246, 0.85) 0%, rgba(229, 231, 235, 0.85) 100%);
+  background: var(--card-bg);
+  border: var(--card-border);
   border-color: var(--color-gray-300);
   cursor: default;
+  box-shadow: var(--card-shadow-default);
 }
 
 .game-grid.opponent .grid-space:hover {
   /* No hover effect for opponent grid */
   border-color: var(--color-gray-300);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--card-shadow-default);
   transform: none;
 }
 
 /* General hover for player grid */
 .grid-space:hover {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-light), var(--shadow-md);
+  box-shadow: var(--card-shadow-hover), 0 0 0 2px var(--color-primary-light);
 }
 
 .grid-space:focus-within {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-light), var(--shadow-md);
+  box-shadow: var(--card-shadow-hover), 0 0 0 2px var(--color-primary-light);
 }
 
 /* Space number styling */
 .space-number {
   font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-black);
-  color: var(--color-gray-300);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-gray-500);
   user-select: none;
   transition: var(--transition-all);
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+  text-shadow: var(--text-shadow-light);
 }
 
 .game-grid.opponent .space-number {
@@ -135,10 +148,10 @@
 @keyframes pulseAvailable {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+    box-shadow: var(--card-shadow-default), 0 0 0 0 rgba(16, 185, 129, 0.4);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.1);
+    box-shadow: var(--card-shadow-hover), 0 0 0 6px rgba(16, 185, 129, 0.1);
   }
 }
 
@@ -173,11 +186,11 @@
 }
 
 .grid-space .card.validated {
-  box-shadow: 0 0 0 3px var(--color-validated-light), var(--shadow-md);
+  box-shadow: var(--card-shadow-hover), 0 0 0 3px var(--color-validated-light);
 }
 
 .grid-space .card.selected {
-  box-shadow: 0 0 0 3px var(--color-selected-light), var(--shadow-md);
+  box-shadow: var(--card-shadow-hover), 0 0 0 3px var(--color-selected-light);
 }
 
 .card-fade-in {
