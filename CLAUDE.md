@@ -11,20 +11,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Recent Development History
 
 ### Major Revamp & Reorganization (Current Implementation)
+
 - **Started fresh** with a clean architecture focused only on Vetrolisci multiplayer
 - **Preserved working Vetrolisci logic** while modernizing the socket and UI layers
 - **Reorganized structure**: Flat, modular architecture with separated concerns (client, server, shared, core)
 - **Simple tech stack**: React + Vite (frontend) + Express + Socket.IO (backend) - no complex frameworks or databases
 
 ### Key Issues Resolved
+
 1. **Card Validation Bug**: Fixed auto-validation logic that was incorrectly validating cards just for being in correct position
 2. **Draft State Advancement**: Fixed critical bug where server advanced draft state before placement choices were made
-3. **Modal System**: Fixed CardChoiceModal (duplicate cards) and PlacementChoiceModal (validated placement) scenarios  
+3. **Modal System**: Fixed CardChoiceModal (duplicate cards) and PlacementChoiceModal (validated placement) scenarios
 4. **Player Indexing**: Fixed multiplayer synchronization issues with proper player index management
 5. **React Hooks**: Fixed hooks ordering violations in GameBoard component
 6. **Restricted Cards**: Implemented validation overlay system with visual restrictions for validated cards
 
 ### Current Status
+
 - ✅ **Core multiplayer Vetrolisci working** with proper card validation rules
 - ✅ **Room-based multiplayer** with host/guest system
 - ✅ **All placement scenarios** working: empty/face-down, duplicate number, already validated
@@ -36,6 +39,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Current Architecture (Post-Revamp)
 
 ### Project Structure (Reorganized)
+
 ```
 src/
 ├── client/                  # Game-specific UI components
@@ -60,22 +64,25 @@ src/
 ```
 
 ### Frontend (React + Vite)
+
 - **Entry Point**: `src/index.html` → `src/main.jsx` → `src/App.jsx`
 - **Room System**: Create/join Vetrolisci rooms with room codes, host/guest roles
 - **Game Integration**: `GameBoard` component drives gameplay UI once the room is full
 - **Real-time Communication**: Socket.IO client wrapper in `src/shared/utils/socket-client.js`
 
 ### Backend (Node.js + Express + Socket.IO)
+
 - **Entry Point**: `src/server/main.js` - handles room management and routing
 - **Game Server**: Vetrolisci logic in `src/server/vetrolisci-server.js`
 - **In-memory State**: Maps for rooms, players, game states
 - **Real-time Features**: Socket.IO for live multiplayer with room isolation
 
 ### Vetrolisci Game Systems (Current Implementation)
+
 - **Draft Phase**: 4-card alternating draft system with turn-based picking
-- **Placement Scenarios**: 
+- **Placement Scenarios**:
   1. **Empty/Face-down**: Auto-place on target position (card.value - 1)
-  2. **Duplicate Number**: Show CardChoiceModal to choose which card stays face-up  
+  2. **Duplicate Number**: Show CardChoiceModal to choose which card stays face-up
   3. **Already Validated**: Show PlacementChoiceModal to place face-down on empty space
 - **Card Validation**: Cards validate when placed correctly with face-down cards underneath
 - **Restriction System**: Visual overlays prevent picking validated card numbers (unless all cards are validated)
@@ -84,10 +91,12 @@ src/
 ### Socket.IO Events (Current Implementation)
 
 #### Room Management
+
 - **Client → Server**: `create-room`, `join-room`, `check-room`
 - **Server → Client**: `player-joined`, `game-started`
 
-#### Vetrolisci Game Events  
+#### Vetrolisci Game Events
+
 - **Client → Server**: `vetrolisci-pick-card`, `vetrolisci-placement-choice`, `vetrolisci-get-state`
 - **Server → Client**: `vetrolisci-card-placed`, `vetrolisci-round-complete`, `vetrolisci-game-complete`
 
@@ -124,13 +133,15 @@ npm run typecheck
 ### UI Components (Current Implementation)
 
 #### Shared Components (`src/shared/components/`)
+
 - **Modal**: Reusable modal wrapper with overlay and close handling
 - **Button**: Styled button component with variants (primary, outline, disabled)
 - **LoadingSpinner**: Loading animation component
 
 #### Game Components (`src/client/components/`)
+
 - **GameBoard**: Main game container with socket integration and state management
-- **GameGrid**: 3x3 card grid with placement logic and animations  
+- **GameGrid**: 3x3 card grid with placement logic and animations
 - **Card**: Individual card component with image loading and validation states
 - **CardChoiceModal**: Modal for choosing between duplicate cards (keep existing vs use new)
 - **PlacementChoiceModal**: Modal for choosing grid position for face-down placement
@@ -138,6 +149,7 @@ npm run typecheck
 - **ScoreBoard**: Score tracking and breakdown display
 
 #### Key Features
+
 - **Restricted Card Overlays**: Visual indicators for cards that can't be picked
 - **Real-time Animations**: Card placement, validation, and turn transitions
 - **Error Handling**: User-friendly error messages and recovery
@@ -146,6 +158,7 @@ npm run typecheck
 ## Critical Implementation Details
 
 ### Card Validation Rules (FIXED)
+
 - **Cards do NOT auto-validate** just for being in correct position
 - **Cards validate ONLY when**:
   1. Placed face-up on top of a face-down card, OR
@@ -153,11 +166,13 @@ npm run typecheck
 - **Validation checking**: `hasValidatedCardWithNumber()` and `canPickCard()` in `placement.js`
 
 ### Placement Scenarios (WORKING)
+
 1. **Empty/Face-down**: Place on target position (card.value - 1), validates if face-down card underneath
 2. **Duplicate Number**: CardChoiceModal appears, player chooses which card stays face-up, both become validated
 3. **Already Validated**: PlacementChoiceModal appears, card placed face-down on chosen empty space
 
-### Restriction System (IMPLEMENTED)  
+### Restriction System (IMPLEMENTED)
+
 - **Visual overlays** with restricted.png icon for cards that can't be picked
 - **Rule**: Can't pick card if you already have validated card with that number
 - **Exception**: If ALL revealed cards would violate rule, can pick any card (goes face-down)
@@ -166,8 +181,9 @@ npm run typecheck
 ## Known Working State & Next Steps
 
 ### What's Currently Working ✅
+
 - **Room creation/joining** with room codes and host/guest system
-- **Complete multiplayer Vetrolisci game** with proper turn management  
+- **Complete multiplayer Vetrolisci game** with proper turn management
 - **All placement scenarios** including modals for duplicate/validated cards
 - **Card validation system** with proper rules (no auto-validation)
 - **Restricted card overlays** showing which cards can't be picked
@@ -176,8 +192,9 @@ npm run typecheck
 - **Responsive UI** that works on different screen sizes
 
 ### Potential Next Steps
+
 - Audio system integration (music, sound effects)
-- Keyboard shortcuts and accessibility features  
+- Keyboard shortcuts and accessibility features
 - Visual polish and animations
 - Deployment configuration for production
 
@@ -216,6 +233,7 @@ public/
 ## Important Notes for Future Development
 
 ### Development Commands (Current)
+
 ```bash
 npm install          # Install dependencies
 npm run dev         # Start server (8001) + client (5173) concurrently
@@ -224,11 +242,13 @@ npm run client      # Client only (Vite dev server)
 ```
 
 ### Game Assets (Current Location)
+
 - **Card Images**: `public/cards/fronts/` and `public/cards/backs/`
 - **Icons**: `public/icons/` (including `restricted.png` for card overlays)
 - **Naming**: `{color}-{value}.png`, `{color}-{value}-alt.png`, `{color}-{value}-special.png`
 
 ### Key Files to Reference
+
 - **Main server**: `src/server/main.js` (Express + Socket.IO + room management)
 - **Vetrolisci server**: `src/server/vetrolisci-server.js` (game logic)
 - **Main client**: `src/App.jsx` (room creation/joining interface)
@@ -238,6 +258,7 @@ npm run client      # Client only (Vite dev server)
 - **Socket client**: `src/shared/utils/socket-client.js` (Socket.IO wrapper)
 
 ### Critical Bug Fixes Applied
+
 1. **Fixed auto-validation bug** in `validation.js` - cards only validate with face-down cards underneath
 2. **Fixed draft state advancement** in `vetrolisci-server.js` - waits for placement choices
 3. **Fixed React hooks ordering** in `GameBoard.jsx` - all hooks at component top
@@ -245,7 +266,8 @@ npm run client      # Client only (Vite dev server)
 5. **Fixed modal data structures** for CardChoiceModal and PlacementChoiceModal
 
 ### Testing & Debugging
+
 - **Server logs**: Watch for `🎯` prefixed debug messages showing placement scenarios
-- **Browser console**: Client-side errors and socket connection status  
+- **Browser console**: Client-side errors and socket connection status
 - **Room codes**: 4-character alphanumeric codes for joining games
 - **Player indexing**: Host = player 0, Guest = player 1
