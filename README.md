@@ -5,7 +5,7 @@ A real-time multiplayer implementation of the Vetrolisci (Pixies) card game. Two
 ## ✨ Features
 
 - **Real-time Multiplayer**: Head-to-head gameplay with instant synchronization
-- **Room System**: Private 6-character invite codes for matchmaking
+- **Room System**: Private 4-character invite codes for matchmaking
 - **Complete Game Implementation**: Full Vetrolisci rules including drafting, placement, and scoring
 - **Modern UI**: Glassmorphism design with smooth animations and responsive layout
 - **Accessibility**: WCAG AA compliant with keyboard navigation and screen reader support
@@ -48,7 +48,7 @@ npm run preview   # Preview production build
 
 ### Game Flow
 
-1. **Create Room**: Host creates a private room and shares the 6-character code
+1. **Create Room**: Host creates a private room and shares the 4-character code
 2. **Join Game**: Second player enters the same room code
 3. **Draft Phase**: Players alternate picking from 4 revealed cards each turn
 4. **Placement**: Cards are placed on 3×3 grid following placement rules

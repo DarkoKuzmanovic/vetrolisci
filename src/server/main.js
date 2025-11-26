@@ -28,13 +28,13 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Generate room code (6-character alphanumeric)
+// Generate room code (4-character alphanumeric)
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   let code;
   do {
     code = '';
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 4; i++) {
       code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
   } while (rooms.has(code)); // Ensure uniqueness

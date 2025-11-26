@@ -183,9 +183,9 @@ function App() {
       return;
     }
 
-    if (roomCode.length !== 6) {
+    if (roomCode.length !== 4) {
       triggerInputError();
-      pushToast("Enter 6 characters", "error");
+      pushToast("Enter 4 characters", "error");
       return;
     }
 
@@ -238,7 +238,7 @@ function App() {
   }
 
   const playersInRoom = currentRoom?.room?.players?.length || 1;
-  const roomCodeReady = roomCode.length === 6;
+  const roomCodeReady = roomCode.length === 4;
   const joinDisabled = !connected || !roomCodeReady || loading;
 
   const renderConnectionDot = () =>
@@ -302,13 +302,13 @@ function App() {
                   placeholder="Enter code"
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  maxLength={6}
+                  maxLength={4}
                   className={`room-code-input ${roomCodeReady ? "valid" : ""} ${inputError ? "error shake" : ""}`}
                   id="room-code-input"
                   disabled={loading}
                   autoComplete="off"
                 />
-                <span className={`char-counter ${roomCodeReady ? "complete" : ""}`}>{roomCode.length}/6</span>
+                <span className={`char-counter ${roomCodeReady ? "complete" : ""}`}>{roomCode.length}/4</span>
               </div>
               <Button
                 variant="primary"

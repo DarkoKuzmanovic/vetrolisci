@@ -247,5 +247,5 @@ npm run client      # Client only (Vite dev server)
 ### Testing & Debugging
 - **Server logs**: Watch for `🎯` prefixed debug messages showing placement scenarios
 - **Browser console**: Client-side errors and socket connection status  
-- **Room codes**: 6-character alphanumeric codes for joining games
+- **Room codes**: 4-character alphanumeric codes for joining games
 - **Player indexing**: Host = player 0, Guest = player 1
