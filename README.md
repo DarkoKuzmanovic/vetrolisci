@@ -122,7 +122,8 @@ public/
 ├── cards/                      # Card images (70 fronts + backs)
 ├── icons/                      # UI icons and assets
 ├── audio/                      # Game sound effects and music
-└── backgrounds/                # Game background images
+├── background.jpg              # Game background image
+└── background3.jpg             # Alternative background image
 ```
 
 ## 🔧 Technical Details
@@ -225,4 +226,15 @@ Darko Kuzmanovic
 
 ---
 
-_Vetrolisci is based on the Pixies card game mechanics, adapted for online multiplayer gameplay._
+## 📦 Version
+
+**Current Version**: 2.0.1
+
+### Recent Updates (v2.0.1)
+
+- Updated project metadata and documentation
+- Minor version bump for maintenance
+
+---
+
+Vetrolisci is based on the Pixies card game mechanics, adapted for online multiplayer gameplay.
