@@ -268,7 +268,7 @@ function App() {
               <Button
                 variant="success"
                 size="large"
-                icon="➕"
+                icon={<img src="/icons/host-game.svg" alt="host" style={{ width: "20px", height: "20px" }} />}
                 onClick={handleCreateVetrolisciRoom}
                 disabled={!connected}
                 tooltip="Create a private room"
@@ -279,7 +279,7 @@ function App() {
               <Button
                 variant="primary"
                 size="large"
-                icon="🔗"
+                icon={<img src="/icons/join-game.svg" alt="join" style={{ width: "20px", height: "20px" }} />}
                 onClick={handleJoinGame}
                 disabled={!connected}
                 tooltip="Join with a room code"
@@ -313,7 +313,7 @@ function App() {
               <Button
                 variant="primary"
                 size="large"
-                icon="🔗"
+                icon={<img src="/icons/join-game.svg" alt="join" style={{ width: "20px", height: "20px" }} />}
                 onClick={handleJoinRoom}
                 disabled={joinDisabled}
                 loading={loading}
@@ -335,7 +335,12 @@ function App() {
             <div className="room-code-card">
               <div className="room-code-display">
                 <span className="room-code-text">{roomCode || "------"}</span>
-                <Button variant="secondary" size="small" icon="📋" onClick={copyRoomCode}>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  icon={<img src="/icons/copy.svg" alt="copy" style={{ width: "16px", height: "16px" }} />}
+                  onClick={copyRoomCode}
+                >
                   Copy
                 </Button>
               </div>

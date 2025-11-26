@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# Vetrolisci - Multiplayer Card Duel
+## Vetrolisci - Multiplayer Card Duel
 
 ## Project Overview
 
@@ -40,7 +40,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Project Structure (Reorganized)
 
-```
+```bash
 src/
 ├── client/                  # Game-specific UI components
 │   ├── components/          # GameBoard, Card, modals, etc.
@@ -200,7 +200,7 @@ npm run typecheck
 
 ## Current Project Structure (Post-Reorganization)
 
-```
+```bash
 src/
 ├── index.html                    # Entry point
 ├── main.jsx                      # React entry
