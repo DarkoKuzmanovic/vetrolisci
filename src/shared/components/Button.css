@@ -122,8 +122,12 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .button-text--hidden {
@@ -131,8 +135,18 @@
 }
 
 .button-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
   opacity: 1;
   transition: opacity 0.2s ease;
+}
+
+.button-icon {
+  display: inline-flex;
+  align-items: center;
+  font-size: 1.1em;
+  line-height: 1;
 }
 
 /* Focus styles for accessibility */
@@ -141,15 +155,45 @@
   box-shadow: var(--shadow-focus) var(--color-primary-focus);
 }
 
+.button:focus-visible {
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, var(--color-primary));
+  outline-offset: var(--focus-ring-offset, 2px);
+  box-shadow: var(--shadow-focus) var(--color-primary-focus);
+}
+
+/* Ensure minimum touch target size */
+.button {
+  min-height: var(--touch-target-min, 44px);
+}
+
+.button--small {
+  min-height: 36px; /* Slightly smaller but still accessible */
+}
+
 /* Mobile adjustments */
 @media (max-width: 480px) {
   .button--large {
     padding: 14px 28px;
     font-size: 1rem;
   }
-  
+
   .button--medium {
     padding: 10px 20px;
     font-size: 0.9rem;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
+
+  .button:hover:not(.button--disabled):not(.button--loading) {
+    transform: none;
+  }
+
+  .button-spinner {
+    animation-duration: 2s;
   }
 }

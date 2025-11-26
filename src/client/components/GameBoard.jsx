@@ -379,12 +379,6 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
   const currentRound = gameState?.currentRound || 1;
   const isMyTurn = gameState?.currentPickingPlayer?.index === playerIndex || gameState?.currentPlayer === playerIndex;
 
-  const turnLabel = isMyTurn
-    ? "Your turn to pick"
-    : `Waiting for ${gameState?.currentPickingPlayer?.name || "opponent"}`;
-
-  const turnSubtext = gameState?.draftState?.phase === "complete" ? "Placement phase" : "Draft phase";
-
   const roundIndicators = useMemo(
     () =>
       [1, 2, 3].map((round) => ({
@@ -524,17 +518,14 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
           <div className="status-center">
             <div className={`turn-pill ${isMyTurn ? "my-turn" : "waiting"}`}>
               <span className="pill-icon">{isMyTurn ? "🎯" : "⏳"}</span>
-              <div className="pill-copy">
-                <strong>{turnLabel}</strong>
-                <small>{turnSubtext}</small>
-              </div>
+              <span className="pill-label">{isMyTurn ? "Your turn" : "Waiting..."}</span>
             </div>
           </div>
 
           <div className="status-right">
             <div className="round-chip-group">
               {roundIndicators.map(({ round, state }) => (
-                <div key={round} className={`round-chip ${state}`}>
+                <div key={round} className={`round-chip ${state}`} title={`Round ${round}`}>
                   <span>{round}</span>
                 </div>
               ))}
@@ -544,30 +535,23 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
               <button
                 className={`header-control ${soundEnabled ? "active" : ""}`}
                 onClick={toggleSound}
-                title={soundEnabled ? "Disable sound effects" : "Enable sound effects"}
+                title={soundEnabled ? "Sound on" : "Sound off"}
               >
-                <img src="/icons/sound.png" alt="Sound Effects" />
-                <span>SFX</span>
+                <img src="/icons/sound.png" alt="" />
               </button>
               <button
                 className={`header-control ${musicEnabled ? "active" : ""}`}
                 onClick={toggleMusic}
-                title={musicEnabled ? "Disable music" : "Enable music"}
+                title={musicEnabled ? "Music on" : "Music off"}
               >
-                <img src="/icons/music.png" alt="Music" />
-                <span>Music</span>
+                <img src="/icons/music.png" alt="" />
               </button>
-              <Button
-                variant="secondary"
-                size="small"
-                onClick={() => setShowScoreboard(true)}
-                className="header-control-btn"
-              >
-                Scoreboard
-              </Button>
-              <Button variant="outline" size="small" onClick={onBackToMenu} className="header-control-btn danger">
-                Leave
-              </Button>
+              <button className="header-control" onClick={() => setShowScoreboard(true)} title="Scoreboard">
+                🏆
+              </button>
+              <button className="header-control danger" onClick={onBackToMenu} title="Leave game">
+                ✕
+              </button>
             </div>
           </div>
         </motion.div>
@@ -635,11 +619,8 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
               }}
             >
               <div className="grid-header">
-                <div>
-                  <p className="grid-eyebrow">{isMyTurn ? "Your turn" : "Your grid"}</p>
-                  <h3>Your board</h3>
-                </div>
-                <span className="grid-subtext">Place cards by their number</span>
+                <h3>You</h3>
+                {isMyTurn && <span className="turn-badge">Your turn</span>}
               </div>
               <GameGrid
                 grid={currentPlayer.grid}
@@ -664,11 +645,7 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
               }}
             >
               <div className="grid-header">
-                <div>
-                  <p className="grid-eyebrow">Opponent</p>
-                  <h3>Rival board</h3>
-                </div>
-                <span className="grid-subtext muted">See their placements in real time</span>
+                <h3>Opponent</h3>
               </div>
               <GameGrid
                 grid={opponent.grid}

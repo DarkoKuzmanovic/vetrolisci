@@ -21,7 +21,7 @@
 
 @media (min-width: 1024px) {
   .draft-phase {
-  max-width: 900px;
+    max-width: 900px;
   }
 }
 
@@ -83,8 +83,13 @@
 }
 
 @keyframes border-pulse {
-  0%, 100% { border-color: rgba(74, 144, 226, 0.2); }
-  50% { border-color: rgba(74, 144, 226, 0.4); }
+  0%,
+  100% {
+    border-color: rgba(74, 144, 226, 0.2);
+  }
+  50% {
+    border-color: rgba(74, 144, 226, 0.4);
+  }
 }
 
 .available-cards-section h4 {
@@ -99,7 +104,7 @@
 
 /* ===== TURN INDICATOR ===== */
 .turn-indicator {
-  color: #4A90E2;
+  color: #4a90e2;
   font-size: var(--font-size-sm);
   font-weight: 600;
 }
@@ -191,6 +196,25 @@
   transform: scale(0.98);
 }
 
+/* Touch feedback for pickable cards */
+.card-container.pickable:active {
+  transform: scale(0.96);
+  transition: transform 0.1s ease;
+}
+
+/* Focus state for keyboard navigation */
+.card-container.pickable:focus-visible {
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, var(--color-primary));
+  outline-offset: 4px;
+  border-radius: var(--border-radius-md);
+}
+
+/* Ensure minimum touch target size */
+.card-container {
+  min-width: var(--touch-target-min, 44px);
+  min-height: var(--touch-target-min, 44px);
+}
+
 /* ===== CARD-INSPIRED RESTRICTION OVERLAY ===== */
 .card-restriction-overlay {
   position: absolute;
@@ -222,18 +246,14 @@
   padding: var(--spacing-2xl);
   text-align: center;
   margin: var(--spacing-xl) 0;
-  box-shadow: 
-    var(--card-shadow-default),
-    0 0 0 1px var(--color-success-light);
+  box-shadow: var(--card-shadow-default), 0 0 0 1px var(--color-success-light);
   transform-style: preserve-3d;
   transition: var(--transition-all);
 }
 
 .draft-complete-section:hover {
   transform: translateY(-1px) scale(1.01);
-  box-shadow: 
-    var(--card-shadow-hover),
-    0 0 0 1px var(--color-success-light);
+  box-shadow: var(--card-shadow-hover), 0 0 0 1px var(--color-success-light);
 }
 
 .draft-complete-section h4 {
@@ -293,5 +313,30 @@
 
   .draft-complete-section h4 {
     font-size: var(--font-size-lg);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .draft-phase:hover {
+    transform: none;
+  }
+
+  .card-container.pickable:hover {
+    transform: none;
+  }
+
+  .draft-complete-section:hover {
+    transform: none;
+  }
+
+  @keyframes border-pulse {
+    0%,
+    100% {
+      opacity: 0.8;
+    }
+    50% {
+      opacity: 1;
+    }
   }
 }

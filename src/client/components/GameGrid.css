@@ -209,6 +209,24 @@
   }
 }
 
+/* Touch feedback for empty spaces */
+.grid-space.empty:active {
+  transform: scale(0.96);
+  transition: transform 0.1s ease;
+}
+
+/* Focus state for keyboard navigation */
+.grid-space:focus-visible {
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, var(--color-primary));
+  outline-offset: 2px;
+}
+
+/* Ensure grid spaces meet touch target minimum */
+.grid-space {
+  min-width: var(--touch-target-min, 44px);
+  min-height: var(--touch-target-min, 44px);
+}
+
 @media (max-width: 480px) {
   .game-grid {
     --grid-cell-size: 80px;
@@ -218,5 +236,18 @@
 
   .space-number {
     font-size: var(--font-size-lg);
+  }
+}
+
+/* Additional reduced motion for glow animation */
+@media (prefers-reduced-motion: reduce) {
+  .card-fade-in {
+    animation: none;
+    opacity: 1;
+  }
+
+  .card-glow {
+    animation: none;
+    box-shadow: 0 0 8px rgba(40, 167, 69, 0.6);
   }
 }

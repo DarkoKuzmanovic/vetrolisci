@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import socketClient from "./shared/utils/socket-client.js";
-import Modal from "./shared/components/Modal.jsx";
 import Button from "./shared/components/Button.jsx";
 import LoadingSpinner from "./shared/components/LoadingSpinner.jsx";
 import ToastStack from "./shared/components/Toast.jsx";
@@ -12,9 +11,8 @@ function App() {
   const [roomCode, setRoomCode] = useState("");
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [currentRoom, setCurrentRoom] = useState(null);
-  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [inputError, setInputError] = useState(false); // For shake animation
   const [gameData, setGameData] = useState(null);
   const [reconnecting, setReconnecting] = useState(false);
   const [toasts, setToasts] = useState([]);
@@ -38,14 +36,12 @@ function App() {
       setConnected(connected);
       if (reconnected) {
         console.log("🔌 Reconnected to server");
-        pushToast("Reconnected to server", "success", "You can continue your match.");
+        pushToast("Reconnected", "success");
       }
     });
 
     socketClient.onError((error) => {
-      setError(error.message || "An error occurred");
-      setShowErrorModal(true);
-      pushToast("Connection issue", "error", error.message || "Check your network and retry.");
+      pushToast("Connection error", "error");
     });
 
     socketClient.onPlayerJoined((data) => {
@@ -89,8 +85,7 @@ function App() {
         attachSocketListeners();
       } catch (err) {
         console.error("Failed to connect to server:", err);
-        setError("Failed to connect to server. Please check your connection.");
-        setShowErrorModal(true);
+        pushToast("Connection failed", "error");
       } finally {
         if (showLoader) {
           setLoading(false);
@@ -116,7 +111,7 @@ function App() {
     }
 
     if (connected && !lastConnectionState.current) {
-      pushToast("Reconnected to server", "success", "You can continue your match.");
+      pushToast("Reconnected", "success");
     }
 
     lastConnectionState.current = connected;
@@ -143,15 +138,14 @@ function App() {
   const handleBack = () => {
     setCurrentView("menu");
     setRoomCode("");
-    setError("");
+    setInputError(false);
     setCurrentRoom(null);
     setGameData(null);
   };
 
   const handleCreateVetrolisciRoom = async () => {
     if (!connected) {
-      setError("Not connected to server");
-      setShowErrorModal(true);
+      pushToast("Not connected", "error");
       return;
     }
 
@@ -167,31 +161,31 @@ function App() {
         setCurrentView("waiting");
         console.log("🎮 Room created:", response.roomCode);
       } else {
-        setError(response.error || "Failed to create room");
-        setShowErrorModal(true);
+        pushToast(response.error || "Room creation failed", "error");
       }
     } catch (err) {
-      setError("Failed to create room. Please try again.");
-      setShowErrorModal(true);
+      pushToast("Room creation failed", "error");
     } finally {
       setLoading(false);
     }
+  };
+
+  const triggerInputError = () => {
+    setInputError(true);
+    setTimeout(() => setInputError(false), 500);
   };
 
   const handleJoinRoom = async () => {
     console.log("🎯 JOIN ATTEMPT: Starting join process for room:", roomCode);
 
     if (!connected) {
-      console.log("🎯 JOIN ATTEMPT: Not connected to server");
-      setError("Not connected to server");
-      setShowErrorModal(true);
+      pushToast("Not connected", "error");
       return;
     }
 
     if (roomCode.length !== 6) {
-      console.log("🎯 JOIN ATTEMPT: Invalid room code length:", roomCode.length);
-      setError("Please enter a valid 6-character room code");
-      setShowErrorModal(true);
+      triggerInputError();
+      pushToast("Enter 6 characters", "error");
       return;
     }
 
@@ -203,9 +197,8 @@ function App() {
       console.log("🎯 JOIN ATTEMPT: Check room response:", checkResponse);
 
       if (!checkResponse.success) {
-        console.log("🎯 JOIN ATTEMPT: Room check failed:", checkResponse.error);
-        setError(checkResponse.error || "Room not found");
-        setShowErrorModal(true);
+        triggerInputError();
+        pushToast(checkResponse.error || "Room not found", "error");
         setLoading(false);
         return;
       }
@@ -219,14 +212,12 @@ function App() {
         setCurrentView("waiting");
         console.log("👤 Successfully joined room:", roomCode);
       } else {
-        console.log("🎯 JOIN ATTEMPT: Join failed:", joinResponse.error);
-        setError(joinResponse.error || "Failed to join room");
-        setShowErrorModal(true);
+        triggerInputError();
+        pushToast(joinResponse.error || "Join failed", "error");
       }
     } catch (err) {
       console.log("🎯 JOIN ATTEMPT: Exception:", err);
-      setError("Failed to join room. Please try again.");
-      setShowErrorModal(true);
+      pushToast("Join failed", "error");
     } finally {
       setLoading(false);
     }
@@ -235,7 +226,7 @@ function App() {
   const copyRoomCode = () => {
     navigator.clipboard.writeText(roomCode);
     console.log("📋 Room code copied to clipboard");
-    pushToast("Room code copied", "success", "Share it with your opponent.");
+    pushToast("Copied!", "success");
   };
 
   if (loading && currentView === "menu") {
@@ -250,20 +241,16 @@ function App() {
   const roomCodeReady = roomCode.length === 6;
   const joinDisabled = !connected || !roomCodeReady || loading;
 
-  const renderConnectionPill = (size = "default") =>
+  const renderConnectionDot = () =>
     !connected ? (
-      <div className={`connection-pill offline ${size === "compact" ? "connection-pill--compact" : ""}`}>
-        <div className="connection-pill__status">
-          <span className="status-dot"></span>
-          <div>
-            <p>Disconnected from server</p>
-            <small>Check your connection or retry.</small>
-          </div>
-        </div>
-        <Button variant="secondary" size="small" onClick={handleReconnect} loading={reconnecting}>
-          Retry
-        </Button>
-      </div>
+      <button
+        className="connection-dot offline"
+        onClick={handleReconnect}
+        title="Disconnected - Click to retry"
+        disabled={reconnecting}
+      >
+        {reconnecting ? <span className="dot-spinner" /> : <span className="dot" />}
+      </button>
     ) : null;
 
   return (
@@ -277,74 +264,65 @@ function App() {
               <p>Draft fast, place smart, outscore your rival.</p>
             </div>
 
-            <p className="menu-helper">Host spins up a private room and shares a 6-character code.</p>
-
             <div className="menu-buttons">
-              <div className="menu-button-block">
-                <Button variant="success" size="large" onClick={handleCreateVetrolisciRoom} disabled={!connected}>
-                  Host a Game
-                </Button>
-                <p className="menu-button-hint">Create a private room and get a shareable code.</p>
-              </div>
+              <Button
+                variant="success"
+                size="large"
+                icon="➕"
+                onClick={handleCreateVetrolisciRoom}
+                disabled={!connected}
+                tooltip="Create a private room"
+              >
+                Host Game
+              </Button>
 
-              <div className="menu-button-block">
-                <Button variant="primary" size="large" onClick={handleJoinGame} disabled={!connected}>
-                  Join Game
-                </Button>
-                <p className="menu-button-hint">Jump into a room with a 6-character code.</p>
-              </div>
+              <Button
+                variant="primary"
+                size="large"
+                icon="🔗"
+                onClick={handleJoinGame}
+                disabled={!connected}
+                tooltip="Join with a room code"
+              >
+                Join Game
+              </Button>
             </div>
 
-            {renderConnectionPill()}
+            {renderConnectionDot()}
           </div>
         )}
 
         {currentView === "join" && (
           <div className="join-game">
-            <div className="join-game-title">
-              <h2>Join Game</h2>
-              <p>Enter your room code to join friends</p>
-            </div>
+            <h2 className="join-game-title">Join Game</h2>
             <div className="join-form">
-              <label className="field-label" htmlFor="room-code-input">
-                Room code
-              </label>
-              <input
-                type="text"
-                placeholder="ABC123"
-                value={roomCode}
-                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                maxLength={6}
-                className="room-code-input"
-                id="room-code-input"
-                aria-describedby="room-code-helper"
-                disabled={loading}
-              />
-              <p className="field-helper" id="room-code-helper">
-                6 characters, letters or numbers. We&apos;ll auto-capitalize for you.
-              </p>
+              <div className="input-with-counter">
+                <input
+                  type="text"
+                  placeholder="Enter code"
+                  value={roomCode}
+                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                  maxLength={6}
+                  className={`room-code-input ${roomCodeReady ? "valid" : ""} ${inputError ? "error shake" : ""}`}
+                  id="room-code-input"
+                  disabled={loading}
+                  autoComplete="off"
+                />
+                <span className={`char-counter ${roomCodeReady ? "complete" : ""}`}>{roomCode.length}/6</span>
+              </div>
               <Button
                 variant="primary"
                 size="large"
+                icon="🔗"
                 onClick={handleJoinRoom}
                 disabled={joinDisabled}
-                title={
-                  !connected ? "Reconnect to enable joining" : !roomCodeReady ? "Room code must be 6 characters" : ""
-                }
                 loading={loading}
               >
-                Join Game
+                Join
               </Button>
-              <p className="field-helper subtle">
-                {!connected
-                  ? "Reconnect to enable joining."
-                  : !roomCodeReady
-                  ? "Enter all 6 characters to continue."
-                  : "Ready to join when you are."}
-              </p>
             </div>
-            {renderConnectionPill("compact")}
-            <Button variant="outline" onClick={handleBack}>
+            {renderConnectionDot()}
+            <Button variant="outline" size="small" onClick={handleBack}>
               ← Back
             </Button>
           </div>
@@ -352,68 +330,28 @@ function App() {
 
         {currentView === "waiting" && (
           <div className="waiting-room">
-            <div className="eyebrow">Room ready</div>
-            <div className="waiting-room-title">
-              <h2>Room Created!</h2>
-              <p>Share your room code and wait for friends to join.</p>
-            </div>
+            {renderConnectionDot()}
 
-            {renderConnectionPill()}
-
-            <div className="room-code-share">
-              <div className="room-code-header">
-                <div>
-                  <p className="room-code-label">Room code</p>
-                  <h3>Share this with your opponent</h3>
-                </div>
-                <div className={`players-chip ${playersInRoom > 1 ? "filled" : "waiting"}`}>
-                  <span className="chip-dot" />
-                  {playersInRoom}/2 ready
-                </div>
-              </div>
+            <div className="room-code-card">
               <div className="room-code-display">
                 <span className="room-code-text">{roomCode || "------"}</span>
-                <div className="room-code-actions">
-                  <Button variant="secondary" size="small" onClick={copyRoomCode}>
-                    Copy code
-                  </Button>
-                  <p className="room-code-hint">Clipboard ready to share</p>
-                </div>
+                <Button variant="secondary" size="small" icon="📋" onClick={copyRoomCode}>
+                  Copy
+                </Button>
               </div>
-              <p className="room-code-subtext">Send the code to your rival. We start as soon as both players join.</p>
-            </div>
-
-            <div className="room-info">
-              <div className="room-info-section game-section">
-                <div className="game-info">
-                  <span className="game-icon">🎴</span>
-                  <div className="game-details">
-                    <span className="game-label">Playing</span>
-                    <span className="game-name">Vetrolisci</span>
-                  </div>
+              <div className={`players-status ${playersInRoom > 1 ? "ready" : ""}`}>
+                <div className="player-dots">
+                  <span className="player-dot filled" title="You" />
+                  <span className={`player-dot ${playersInRoom > 1 ? "filled" : "pending"}`} title="Opponent" />
                 </div>
-              </div>
-              <div className="room-info-section players-section">
-                <div className="players-info">
-                  <span className="players-label">Players</span>
-                  <div className="players-progress">
-                    <div className="player-chips">
-                      <div className="player-chip filled">You</div>
-                      <div className={`player-chip ${playersInRoom > 1 ? "filled" : "pending"}`}>
-                        {playersInRoom > 1 ? "Opponent joined" : "Waiting for opponent"}
-                      </div>
-                    </div>
-                    <span className="players-count">{playersInRoom}/2</span>
-                  </div>
-                  <p className="players-helper">We&apos;ll start automatically once both players are in the room.</p>
-                </div>
+                <span className="players-count">{playersInRoom}/2</span>
               </div>
             </div>
 
-            <LoadingSpinner size="small" text="Waiting for another player to join..." />
+            {playersInRoom < 2 && <LoadingSpinner size="small" />}
 
-            <Button variant="outline" onClick={handleBack}>
-              Leave room and return to menu
+            <Button variant="outline" size="small" onClick={handleBack}>
+              Leave
             </Button>
           </div>
         )}
@@ -431,13 +369,6 @@ function App() {
           />
         )}
       </main>
-
-      <Modal isOpen={showErrorModal} onClose={() => setShowErrorModal(false)} title="Error">
-        <p className="error-message">{error || "Something went wrong. Please retry or return to the menu."}</p>
-        <div className="modal-actions">
-          <Button onClick={() => setShowErrorModal(false)}>Try Again</Button>
-        </div>
-      </Modal>
 
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
