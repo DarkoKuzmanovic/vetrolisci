@@ -234,48 +234,21 @@ A prioritized list of UI improvements organized into sprints for iterative deliv
 
 ---
 
-## 🏃 Sprint 6: Dark Mode ✅ COMPLETE
-
-**Goal**: Add dark mode support
-**Effort**: ~6-8 hours
-**Impact**: Medium - user preference feature
-
-### Tasks
-
-#### 6.1 Dark Mode Implementation
-
-**Scope**: All CSS files
-
-- [x] Define dark mode color palette in theme.css
-- [x] Add `prefers-color-scheme` media query support
-- [x] Create toggle in UI for manual override (`[data-theme="dark"]`)
-- [x] Test all components in dark mode
-- [x] Adjust glassmorphism effects for dark backgrounds
-
-### Sprint 6 Definition of Done
-
-- [x] Dark mode toggle in settings (via data-theme attribute)
-- [x] Respects system preference
-- [x] All components render correctly (CSS variable based)
-- [x] Glassmorphism effects adapted for dark backgrounds
-
----
-
 ## 📋 Component Status Summary
 
 | Component            | CSS Variables | Glassmorphism | Card-Inspired | Mobile |
 | -------------------- | ------------- | ------------- | ------------- | ------ |
 | GameBoard            | ✅            | ✅            | ✅            | ✅     |
-| GameGrid             | ✅            | ✅            | ⚠️ Partial    | ✅     |
+| GameGrid             | ✅            | ✅            | ✅            | ✅     |
 | Card                 | ✅            | N/A           | ✅            | ✅     |
 | DraftPhase           | ✅            | ✅            | ✅            | ✅     |
 | Modal (base)         | ✅            | ✅            | ✅            | ✅     |
-| ScoreBoard           | ❌            | ⚠️ Partial    | ❌            | ⚠️     |
+| ScoreBoard           | ✅            | ✅            | ✅            | ✅     |
 | ScoreboardModal      | ✅            | ✅            | ✅            | ✅     |
 | CardChoiceModal      | ✅            | ✅            | ✅            | ✅     |
 | PlacementChoiceModal | ✅            | ✅            | ✅            | ✅     |
 | TurnScoreModal       | ✅            | ✅            | ✅            | ✅     |
-| RoundCompleteModal   | ✅            | ⚠️            | ✅            | ⚠️     |
+| RoundCompleteModal   | ✅            | ✅            | ✅            | ✅     |
 
 **Legend**: ✅ Complete | ⚠️ Partial | ❌ Needs Work | ❓ Needs Review
 
@@ -290,9 +263,8 @@ A prioritized list of UI improvements organized into sprints for iterative deliv
 | Sprint 3 | Feedback & States           | 3-4 hrs | 🟡 Med   | ✅ Complete |
 | Sprint 4 | Visual Polish               | 2-3 hrs | 🟡 Med   | ✅ Complete |
 | Sprint 5 | Accessibility & Performance | 4-5 hrs | 🔴 High  | ✅ Complete |
-| Sprint 6 | Dark Mode                   | 6-8 hrs | 🟡 Med   | ✅ Complete |
 
-**All 6 Sprints Complete!** 🎉
+**All 5 Sprints Complete!** 🎉
 
 ---
 

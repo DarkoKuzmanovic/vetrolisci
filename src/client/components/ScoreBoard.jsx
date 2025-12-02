@@ -1,52 +1,72 @@
-import React, { memo } from 'react'
-import { calculatePlayerScore } from '../../core/scoring.js'
-import './ScoreBoard.css'
+import React, { memo } from "react";
+import { calculatePlayerScore } from "../../core/scoring.js";
+import "./ScoreBoard.css";
 
-const ScoreBoard = memo(({ players, currentRound, onClose }) => {
+const ScoreBoard = memo(({ players, currentRound, onClose, playerIndex = 0 }) => {
   const getCurrentScore = (player) => {
-    if (!player.grid) return { total: 0 }
-    return calculatePlayerScore(player.grid, currentRound - 1) // use 0-based round index
-  }
+    if (!player.grid) return { total: 0 };
+    return calculatePlayerScore(player.grid, currentRound - 1); // use 0-based round index
+  };
 
   const getTotalScore = (player) => {
-    const completedRounds = player.scores.reduce((sum, score) => sum + score, 0)
-    return completedRounds + getCurrentScore(player).total
-  }
+    const completedRounds = player.scores.reduce((sum, score) => sum + score, 0);
+    return completedRounds + getCurrentScore(player).total;
+  };
+
+  // Determine which player is leading
+  const getLeadingPlayerIndex = () => {
+    const totalScores = players.map((player) => getTotalScore(player));
+    const maxScore = Math.max(...totalScores);
+    return totalScores.indexOf(maxScore);
+  };
+
+  const leadingPlayerIndex = getLeadingPlayerIndex();
 
   return (
     <div className="scoreboard-container">
       <div className="scoreboard-header">
         <h3>Scoreboard</h3>
         {onClose && (
-          <button className="scoreboard-close" onClick={onClose} title="Close scoreboard">
-            ✕
+          <button className="scoreboard-close" onClick={onClose} title="Close scoreboard" aria-label="Close scoreboard">
+            ×
           </button>
         )}
       </div>
       <div className="scores-container">
-        {players.map((player, index) => (
-          <div key={index} className="player-score">
-            <h4>{player.name}</h4>
-            <div className="score-breakdown">
-              <div className="round-scores">
-                {player.scores.map((score, roundIndex) => (
-                  <div key={roundIndex} className="round-score-item">
-                    <strong>Round {roundIndex + 1}: {score}</strong>
+        {players.map((player, index) => {
+          const isLeading = index === leadingPlayerIndex;
+          const isYou = index === playerIndex;
+
+          return (
+            <div key={index} className={`player-score ${isLeading ? "is-leading" : ""} ${isYou ? "is-you" : ""}`}>
+              <h4>
+                {player.name} {isYou && "(You)"}
+              </h4>
+              <div className="score-breakdown">
+                <div className="round-scores">
+                  {player.scores.map((score, roundIndex) => (
+                    <div key={roundIndex} className="round-score-item">
+                      <strong>
+                        Round {roundIndex + 1}: {score}
+                      </strong>
+                    </div>
+                  ))}
+                  <div className="round-score-item current">
+                    <strong>
+                      Round {currentRound}: {getCurrentScore(player).total}
+                    </strong>
                   </div>
-                ))}
-                <div className="round-score-item current">
-                  <strong>Round {currentRound}: {getCurrentScore(player).total}</strong>
+                </div>
+                <div className="total-score">
+                  <strong>Total: {getTotalScore(player)}</strong>
                 </div>
               </div>
-              <div className="total-score">
-                <strong>Total: {getTotalScore(player)}</strong>
-              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
-  )
-})
+  );
+});
 
-export default ScoreBoard
+export default ScoreBoard;
