@@ -1,25 +1,12 @@
-import React, { useEffect } from "react";
+import React from "react";
 import Card from "./Card.jsx";
 import Modal from "../../shared/components/Modal.jsx";
 import Button from "../../shared/components/Button.jsx";
+import { useEscapeKey } from "../../shared/hooks/useEscapeKey.js";
 import "./CardChoiceModal.css";
 
 const CardChoiceModal = ({ isOpen, existingCard, newCard, onChoose, onCancel }) => {
-  useEffect(() => {
-    const handleEscape = (event) => {
-      if (event.key === "Escape" && isOpen) {
-        onCancel();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener("keydown", handleEscape);
-    }
-
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [isOpen, onCancel]);
+  useEscapeKey(isOpen, onCancel);
 
   if (!isOpen || !newCard) return null;
 

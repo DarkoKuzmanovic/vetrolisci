@@ -1,18 +1,8 @@
-import React, { memo } from 'react'
-import { calculatePlayerScore } from '../../core/scoring.js'
-import './ScoreBoard.css'
+import React, { memo } from "react";
+import { getCurrentScore, getTotalScore } from "../utils/scoreUtils.js";
+import "./ScoreBoard.css";
 
 const ScoreBoard = memo(({ players, currentRound, onClose }) => {
-  const getCurrentScore = (player) => {
-    if (!player.grid) return { total: 0 }
-    return calculatePlayerScore(player.grid, currentRound - 1) // use 0-based round index
-  }
-
-  const getTotalScore = (player) => {
-    const completedRounds = player.scores.reduce((sum, score) => sum + score, 0)
-    return completedRounds + getCurrentScore(player).total
-  }
-
   return (
     <div className="scoreboard-container">
       <div className="scoreboard-header">
@@ -31,22 +21,26 @@ const ScoreBoard = memo(({ players, currentRound, onClose }) => {
               <div className="round-scores">
                 {player.scores.map((score, roundIndex) => (
                   <div key={roundIndex} className="round-score-item">
-                    <strong>Round {roundIndex + 1}: {score}</strong>
+                    <strong>
+                      Round {roundIndex + 1}: {score}
+                    </strong>
                   </div>
                 ))}
                 <div className="round-score-item current">
-                  <strong>Round {currentRound}: {getCurrentScore(player).total}</strong>
+                  <strong>
+                    Round {currentRound}: {getCurrentScore(player, currentRound).total}
+                  </strong>
                 </div>
               </div>
               <div className="total-score">
-                <strong>Total: {getTotalScore(player)}</strong>
+                <strong>Total: {getTotalScore(player, currentRound)}</strong>
               </div>
             </div>
           </div>
         ))}
       </div>
     </div>
-  )
-})
+  );
+});
 
-export default ScoreBoard
+export default ScoreBoard;

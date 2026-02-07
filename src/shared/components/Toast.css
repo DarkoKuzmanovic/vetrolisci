@@ -32,11 +32,13 @@
 .toast-copy p {
   margin: 0;
   font-weight: var(--font-weight-semibold);
-  color: var(--color-secondary);
+  color: var(--color-black);
+  line-height: var(--line-height-tight);
 }
 
 .toast-copy small {
-  color: var(--color-gray-500);
+  color: var(--color-gray-600);
+  line-height: var(--line-height-normal);
 }
 
 .toast-close {

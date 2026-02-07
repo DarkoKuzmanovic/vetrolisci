@@ -7,7 +7,8 @@
   margin-bottom: var(--spacing-xl);
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
-  text-shadow: var(--text-shadow-light);
+  letter-spacing: var(--letter-spacing-tight);
+  line-height: var(--line-height-tight);
 }
 
 .round-scores {
@@ -37,7 +38,7 @@
   margin: 0 0 var(--spacing-sm) 0;
   color: var(--color-black);
   font-weight: var(--font-weight-bold);
-  text-shadow: var(--text-shadow-light);
+  line-height: var(--line-height-tight);
 }
 
 .score-value {
@@ -74,7 +75,7 @@
   padding: var(--spacing-lg);
   margin-bottom: var(--spacing-xl);
   color: var(--color-black);
-  text-shadow: var(--text-shadow-light);
+  line-height: var(--line-height-normal);
   box-shadow: var(--card-shadow-default);
 }
 

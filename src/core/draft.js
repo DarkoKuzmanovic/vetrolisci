@@ -80,17 +80,6 @@ export function getDraftPhaseStatus(draftState) {
   };
 }
 
-export function startPickPhase(draftState) {
-  if (draftState.phase !== DraftPhase.REVEAL) {
-    throw new Error("Cannot start pick phase: not in reveal phase");
-  }
-
-  return {
-    ...draftState,
-    phase: DraftPhase.PICK,
-  };
-}
-
 // Get the next cards each player will pick (for UI hints)
 export function getUpcomingPickOrder(draftState) {
   const upcoming = [];

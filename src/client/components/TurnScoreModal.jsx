@@ -40,7 +40,7 @@ const TurnScoreModal = ({ isOpen, gameState, playerIndex, onContinue }) => {
                   </div>
                   <div className="turn-breakdown-item">
                     <span className="breakdown-label">Color Bonus</span>
-                    <span className="breakdown-value">{playerScore.breakdown.colorBonus || 0}</span>
+                    <span className="breakdown-value">{playerScore.breakdown.colorZone || 0}</span>
                   </div>
                 </div>
               )}
@@ -65,7 +65,7 @@ const TurnScoreModal = ({ isOpen, gameState, playerIndex, onContinue }) => {
                   </div>
                   <div className="turn-breakdown-item">
                     <span className="breakdown-label">Color Bonus</span>
-                    <span className="breakdown-value">{opponentScore.breakdown.colorBonus || 0}</span>
+                    <span className="breakdown-value">{opponentScore.breakdown.colorZone || 0}</span>
                   </div>
                 </div>
               )}

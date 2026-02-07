@@ -7,17 +7,24 @@
 }
 
 body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-primary);
   background:
-    linear-gradient(135deg, rgba(217, 119, 6, 0.08) 0%, rgba(255, 255, 255, 0.95) 45%, rgba(59, 130, 246, 0.08) 100%),
+    linear-gradient(
+      135deg,
+      var(--page-bg-gradient-start) 0%,
+      var(--page-bg-gradient-mid) 45%,
+      var(--page-bg-gradient-end) 100%
+    ),
     url("/background.jpg?v=1") repeat;
-  background-size: auto, 420px 420px;
+  background-size:
+    auto,
+    420px 420px;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #1a1a1a;
-  line-height: 1.6;
+  color: var(--color-black);
+  line-height: var(--line-height-normal);
 }
 
 #root {

@@ -215,27 +215,6 @@
   min-height: var(--touch-target-min, 44px);
 }
 
-/* ===== CARD-INSPIRED RESTRICTION OVERLAY ===== */
-.card-restriction-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(220, 53, 69, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--border-radius-md);
-  backdrop-filter: blur(2px);
-  border: 2px solid var(--color-error);
-}
-
-.restriction-icon {
-  font-size: 2em;
-  text-shadow: var(--text-shadow-strong);
-}
-
 /* ===== CARD-INSPIRED DRAFT COMPLETE ===== */
 .draft-complete-section {
   /* Card-inspired completion notice */
@@ -246,14 +225,18 @@
   padding: var(--spacing-2xl);
   text-align: center;
   margin: var(--spacing-xl) 0;
-  box-shadow: var(--card-shadow-default), 0 0 0 1px var(--color-success-light);
+  box-shadow:
+    var(--card-shadow-default),
+    0 0 0 1px var(--color-success-light);
   transform-style: preserve-3d;
   transition: var(--transition-all);
 }
 
 .draft-complete-section:hover {
   transform: translateY(-1px) scale(1.01);
-  box-shadow: var(--card-shadow-hover), 0 0 0 1px var(--color-success-light);
+  box-shadow:
+    var(--card-shadow-hover),
+    0 0 0 1px var(--color-success-light);
 }
 
 .draft-complete-section h4 {

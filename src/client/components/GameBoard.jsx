@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+// Utility imports
+import logger from "../../shared/utils/logger.js";
+
 // Component imports
 import GameGrid from "./GameGrid.jsx";
 import Card from "./Card.jsx";
@@ -110,7 +113,7 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
   // Log turn changes for debugging
   useEffect(() => {
     if (gameState?.currentPickingPlayer?.index !== undefined) {
-      console.log(`🎯 Turn: Player ${gameState.currentPickingPlayer.index} (${gameState.currentPickingPlayer?.name})`);
+      logger.log(`🎯 Turn: Player ${gameState.currentPickingPlayer.index} (${gameState.currentPickingPlayer?.name})`);
     }
   }, [gameState?.currentPickingPlayer?.index, gameState?.currentPickingPlayer?.name]);
 
@@ -143,7 +146,7 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
     if (!roomCode) return;
 
     const handleCardPlaced = (data) => {
-      console.log("🎯 Card placed:", data);
+      logger.log("🎯 Card placed:", data);
       updateGameState(data.gameState);
 
       // Trigger animations
@@ -156,7 +159,7 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
           for (const player of data.gameState.players) {
             const validatedCard = player.grid.find((card) => card && card.id === data.cardId && card.validated);
             if (validatedCard) {
-              console.log("🎉 Card validated, triggering confetti:", data.cardId);
+              logger.log("🎉 Card validated, triggering confetti:", data.cardId);
               setConfettiCards((prev) => new Set([...prev, data.cardId]));
               break;
             }
@@ -183,7 +186,7 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
     };
 
     const handleRoundComplete = (data) => {
-      console.log("🏆 Round complete:", data);
+      logger.log("🏆 Round complete:", data);
       audioService.playSound("validate");
       setRoundCompleteData({
         roundNumber: data.roundNumber,
@@ -195,7 +198,7 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
     };
 
     const handleGameComplete = (data) => {
-      console.log("🎉 Game complete:", data);
+      logger.log("🎉 Game complete:", data);
       // Play appropriate sound based on win/loss
       const currentPlayerScore = data.gameState.players[playerIndex].totalScore;
       const opponentScore = data.gameState.players[playerIndex === 0 ? 1 : 0].totalScore;
@@ -220,14 +223,14 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
 
   const handleCardPick = async (cardId) => {
     if (!gameState?.draftState) {
-      console.log("⚠️ No game state or draft state available");
+      logger.log("⚠️ No game state or draft state available");
       return;
     }
 
     // Validate player's turn
     const currentPickingPlayer = gameState.currentPickingPlayer;
     if (!currentPickingPlayer || currentPickingPlayer.index !== playerIndex) {
-      console.log("⚠️ Not your turn to pick - current player:", currentPickingPlayer?.index, "you are:", playerIndex);
+      logger.log("⚠️ Not your turn to pick - current player:", currentPickingPlayer?.index, "you are:", playerIndex);
       setError("Not your turn to pick!");
       setTimeout(() => setError(""), 3000);
       return;
@@ -248,7 +251,7 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
 
     // Prevent double-clicking
     if (animatingCards.has(cardId)) {
-      console.log("⚠️ Card pick already in progress");
+      logger.log("⚠️ Card pick already in progress");
       return;
     }
 
@@ -385,7 +388,7 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
         round,
         state: round === currentRound ? "current" : round < currentRound ? "completed" : "upcoming",
       })),
-    [currentRound]
+    [currentRound],
   );
 
   // ==================== RENDER STATES ====================
@@ -395,16 +398,6 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
       <div className="game-board loading">
         <h2>Loading Vetrolisci...</h2>
         <div className="loading-spinner"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="game-board error">
-        <h2>Error</h2>
-        <p>{error}</p>
-        <button onClick={onBackToMenu}>Back to Menu</button>
       </div>
     );
   }

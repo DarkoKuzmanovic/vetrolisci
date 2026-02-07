@@ -14,12 +14,13 @@
   align-items: center;
   justify-content: center;
   /* ✨ PREMIUM: Subtle depth and premium feel */
-  box-shadow: 
+  box-shadow:
     var(--card-shadow-default),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   /* Optimized transitions for better performance */
-  transition: transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
-              box-shadow 0.25s ease;
+  transition:
+    transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow 0.25s ease;
   will-change: transform, box-shadow;
 }
 
@@ -33,7 +34,7 @@
 .card.selected {
   /* 🎨 DESIGN SYSTEM: Using CSS variables consistently */
   border: 3px solid var(--color-selected);
-  box-shadow: 
+  box-shadow:
     var(--shadow-focus) var(--color-selected-light),
     var(--shadow-lg);
   transform: translateY(-3px) scale(1.01);
@@ -44,7 +45,7 @@
 
 .card.selected:hover {
   transform: translateY(-8px) scale(1.03);
-  box-shadow: 
+  box-shadow:
     var(--shadow-focus) var(--color-selected-light),
     var(--shadow-xl);
 }
@@ -52,7 +53,7 @@
 .card.validated {
   /* 🎨 ENHANCED: Card-inspired validation styling */
   border: 3px solid var(--color-validated);
-  box-shadow: 
+  box-shadow:
     var(--shadow-focus) var(--color-validated-light),
     var(--shadow-lg);
   animation: validatedGlow 2s ease-in-out infinite alternate;
@@ -64,7 +65,7 @@
 .card.validated:hover {
   /* ⚡ UNIFIED: Same hover system as other cards - no complex 3D */
   transform: translateY(-8px) scale(1.03);
-  box-shadow: 
+  box-shadow:
     var(--shadow-focus) var(--color-validated-light),
     0 0 25px rgba(5, 150, 105, 0.5);
 }
@@ -72,12 +73,12 @@
 @keyframes validatedGlow {
   /* 🚀 OPTIMIZED: Simplified glow animation for better performance */
   from {
-    box-shadow: 
+    box-shadow:
       var(--shadow-focus) var(--color-validated-light),
       0 0 15px rgba(5, 150, 105, 0.4);
   }
   to {
-    box-shadow: 
+    box-shadow:
       var(--shadow-focus) var(--color-validated-medium),
       0 0 25px rgba(5, 150, 105, 0.6);
   }
@@ -142,7 +143,8 @@
   gap: 2px;
 }
 
-.spiral, .cross {
+.spiral,
+.cross {
   font-size: 10px;
 }
 
@@ -208,7 +210,15 @@
 }
 
 .card-multi .card-color-indicator {
-  background: linear-gradient(45deg, var(--color-info) 25%, var(--color-success-alt) 25%, var(--color-success-alt) 50%, var(--color-warning) 50%, var(--color-warning) 75%, var(--color-error) 75%);
+  background: linear-gradient(
+    45deg,
+    var(--color-info) 25%,
+    var(--color-success-alt) 25%,
+    var(--color-success-alt) 50%,
+    var(--color-warning) 50%,
+    var(--color-warning) 75%,
+    var(--color-error) 75%
+  );
 }
 
 .lazy-image-container {
@@ -247,30 +257,34 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Mobile optimizations - reduce 3D effects for better performance */
 @media (max-width: 768px) {
   .card:hover {
     transform: translateY(-4px) scale(1.02);
-    box-shadow: 
+    box-shadow:
       var(--card-shadow-hover),
       0 8px 24px rgba(0, 0, 0, 0.15);
   }
-  
+
   .card.selected:hover {
     transform: translateY(-6px) scale(1.03);
-    box-shadow: 
+    box-shadow:
       var(--shadow-focus) var(--color-selected-light),
       0 0 15px rgba(217, 119, 6, 0.4),
       0 12px 24px rgba(0, 0, 0, 0.2);
   }
-  
+
   .card.validated:hover {
     transform: translateY(-6px) scale(1.03);
-    box-shadow: 
+    box-shadow:
       var(--shadow-focus) var(--color-validated-light),
       0 0 15px rgba(5, 150, 105, 0.4),
       0 12px 24px rgba(0, 0, 0, 0.2);
@@ -280,21 +294,50 @@
 /* Reduce motion for users who prefer it */
 @media (prefers-reduced-motion: reduce) {
   .card {
-    transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+    transition:
+      box-shadow var(--transition-fast),
+      transform var(--transition-fast);
   }
-  
+
   .card:hover {
     transform: translateY(-2px) scale(1.01);
   }
-  
+
   .card.selected:hover,
   .card.validated:hover {
     transform: translateY(-3px) scale(1.02);
   }
-  
+
   @keyframes validatedGlow {
-    from { opacity: 0.8; }
-    to { opacity: 1; }
+    from {
+      opacity: 0.8;
+    }
+    to {
+      opacity: 1;
+    }
   }
 }
 
+/* ===== CARD RESTRICTION OVERLAY ===== */
+/* Consolidated from DraftPhase.css and GameBoard.css */
+.card-restriction-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(220, 53, 69, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius-md);
+  backdrop-filter: blur(2px);
+  border: 2px solid var(--color-error);
+  z-index: var(--z-sticky);
+}
+
+.restriction-icon {
+  font-size: 2em;
+  text-shadow: var(--text-shadow-strong);
+  opacity: 0.9;
+}

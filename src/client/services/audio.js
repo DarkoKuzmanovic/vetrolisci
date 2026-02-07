@@ -4,26 +4,27 @@ class AudioService {
     this.musicEnabled = true;
     this.backgroundMusic = null;
     this.soundEffects = {};
-    
-    // Initialize audio elements
-    this.initializeAudio();
+    this.initialized = false;
   }
 
   initializeAudio() {
+    if (this.initialized) return;
+    this.initialized = true;
+
     // Background music
-    this.backgroundMusic = new Audio('/audio/music.mp3');
+    this.backgroundMusic = new Audio("/audio/music.mp3");
     this.backgroundMusic.loop = true;
     this.backgroundMusic.volume = 0.3; // Lower volume for background music
-    
+
     // Sound effects
-    this.soundEffects.placeCards = new Audio('/audio/place_cards.mp3');
-    this.soundEffects.playCard = new Audio('/audio/play_card.mp3');
-    this.soundEffects.win = new Audio('/audio/win.mp3');
-    this.soundEffects.lose = new Audio('/audio/lose.mp3');
-    this.soundEffects.validate = new Audio('/audio/validate.mp3');
-    
+    this.soundEffects.placeCards = new Audio("/audio/place_cards.mp3");
+    this.soundEffects.playCard = new Audio("/audio/play_card.mp3");
+    this.soundEffects.win = new Audio("/audio/win.mp3");
+    this.soundEffects.lose = new Audio("/audio/lose.mp3");
+    this.soundEffects.validate = new Audio("/audio/validate.mp3");
+
     // Set volume for sound effects
-    Object.values(this.soundEffects).forEach(audio => {
+    Object.values(this.soundEffects).forEach((audio) => {
       audio.volume = 0.7;
     });
   }
@@ -31,24 +32,32 @@ class AudioService {
   // Play sound effect
   playSound(soundName) {
     if (!this.soundEffectsEnabled) return;
-    
+
+    // Lazy initialize on first use
+    this.initializeAudio();
+
     const sound = this.soundEffects[soundName];
     if (sound) {
       // Reset to beginning and play
       sound.currentTime = 0;
-      sound.play().catch(error => {
-        console.log('Could not play sound:', error);
+      sound.play().catch((error) => {
+        console.log("Could not play sound:", error);
       });
     }
   }
 
   // Start background music
   startBackgroundMusic() {
-    if (!this.musicEnabled || !this.backgroundMusic) return;
-    
-    this.backgroundMusic.play().catch(error => {
-      console.log('Could not play background music:', error);
-    });
+    if (!this.musicEnabled) return;
+
+    // Lazy initialize on first use
+    this.initializeAudio();
+
+    if (this.backgroundMusic) {
+      this.backgroundMusic.play().catch((error) => {
+        console.log("Could not play background music:", error);
+      });
+    }
   }
 
   // Stop background music
@@ -68,13 +77,13 @@ class AudioService {
   // Toggle background music
   toggleMusic() {
     this.musicEnabled = !this.musicEnabled;
-    
+
     if (this.musicEnabled) {
       this.startBackgroundMusic();
     } else {
       this.stopBackgroundMusic();
     }
-    
+
     return this.musicEnabled;
   }
 

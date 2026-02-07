@@ -96,38 +96,12 @@ export const shuffleDeck = (cards = CARDS) => {
   return shuffled;
 };
 
-// Game distribution logic
-export const dealCards = (deck, numCards = 4) => {
-  if (deck.length < numCards) {
-    throw new Error("Not enough cards in deck");
-  }
-  return {
-    dealt: deck.slice(0, numCards),
-    remaining: deck.slice(numCards),
-  };
-};
-
+// Create a shuffled game deck
 export const createGameDeck = () => {
-  return shuffleDeck(CARDS);
+  return shuffleDeck([...CARDS]);
 };
 
-// Round management
-export const dealRoundCards = (deck, roundNumber) => {
-  const cardsPerRound = 4; // Each player gets 2 cards, 2 players = 4 total
-  const startIndex = (roundNumber - 1) * cardsPerRound;
-  const endIndex = startIndex + cardsPerRound;
-
-  if (deck.length < endIndex) {
-    throw new Error("Not enough cards for round");
-  }
-
-  return {
-    roundCards: deck.slice(startIndex, endIndex),
-    remainingDeck: deck.slice(endIndex),
-  };
-};
-
-// Turn management - deals 4 cards from the front of the deck
+// Game distribution logic
 export const dealTurnCards = (deck) => {
   const cardsPerTurn = 4;
 

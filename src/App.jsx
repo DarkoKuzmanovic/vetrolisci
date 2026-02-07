@@ -9,6 +9,7 @@ import "./App.css";
 function App() {
   const [currentView, setCurrentView] = useState("menu"); // 'menu', 'join', 'waiting', 'game'
   const [roomCode, setRoomCode] = useState("");
+  const [playerName, setPlayerName] = useState("");
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [currentRoom, setCurrentRoom] = useState(null);
@@ -92,7 +93,7 @@ function App() {
         }
       }
     },
-    [attachSocketListeners]
+    [attachSocketListeners],
   );
 
   useEffect(() => {
@@ -149,10 +150,12 @@ function App() {
       return;
     }
 
+    const finalPlayerName = playerName.trim() || "Host";
+
     try {
       setLoading(true);
       const response = await socketClient.emit("create-room", {
-        playerName: "Host",
+        playerName: finalPlayerName,
       });
 
       if (response.success) {
@@ -204,7 +207,8 @@ function App() {
       }
 
       console.log("🎯 JOIN ATTEMPT: Room exists, attempting to join...");
-      const joinResponse = await socketClient.joinRoom(roomCode, "Guest");
+      const finalPlayerName = playerName.trim() || "Guest";
+      const joinResponse = await socketClient.joinRoom(roomCode, finalPlayerName);
       console.log("🎯 JOIN ATTEMPT: Join response:", joinResponse);
 
       if (joinResponse.success) {
@@ -264,6 +268,19 @@ function App() {
               <p>Draft fast, place smart, outscore your rival.</p>
             </div>
 
+            <div className="menu-form">
+              <input
+                type="text"
+                placeholder="Your name (optional)"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                maxLength={20}
+                className="player-name-input"
+                disabled={loading}
+                autoComplete="off"
+              />
+            </div>
+
             <div className="menu-buttons">
               <Button
                 variant="success"
@@ -296,6 +313,16 @@ function App() {
           <div className="join-game">
             <h2 className="join-game-title">Join Game</h2>
             <div className="join-form">
+              <input
+                type="text"
+                placeholder="Your name (optional)"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                maxLength={20}
+                className="player-name-input"
+                disabled={loading}
+                autoComplete="off"
+              />
               <div className="input-with-counter">
                 <input
                   type="text"
@@ -362,7 +389,6 @@ function App() {
             playerIndex={gameData.playerIndex}
             onBackToMenu={handleBack}
             showHeader={true}
-            initialGameState={gameData.gameState}
             onGameStateUpdate={(gameState) => {
               setGameData((prev) => ({ ...prev, gameState }));
             }}
