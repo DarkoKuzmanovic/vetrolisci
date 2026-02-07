@@ -29,13 +29,13 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Generate room code (6-character alphanumeric)
+// Generate room code (4-character alphanumeric)
 function generateRoomCode() {
   const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   let code;
   do {
     code = "";
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 4; i++) {
       code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
   } while (rooms.has(code)); // Ensure uniqueness
@@ -362,7 +362,7 @@ io.on("connection", (socket) => {
   socket.on("continue-from-scoring", (data) => {
     try {
       const { roomCode } = data;
-      logger.log(`🎯 Continue from scoring for room ${roomCode} from player ${socket.id}`);
+      logger.log(`🎯 Continue from scoring for room ${roomCode}`);
 
       const game = vetrolisciServer.getGame(roomCode);
       if (!game) {
@@ -370,26 +370,21 @@ io.on("connection", (socket) => {
         return;
       }
 
-      // Track player acknowledgment
+      // Transition from scoring phase to next turn/round
       if (game.phase === "scoring") {
-        if (!game.scoringAcknowledgments) {
-          game.scoringAcknowledgments = new Set();
+        if (game.currentRound >= 3) {
+          // Game should be finished
+          game.phase = "finished";
+        } else {
+          // Continue to next turn of current round or start new round
+          game.phase = "draft";
         }
-        game.scoringAcknowledgments.add(socket.id);
 
-        logger.log(`🎯 Player acknowledged: ${game.scoringAcknowledgments.size}/${game.players.length}`);
+        // Emit updated game state to all players in the room
+        const gameState = vetrolisciServer.getGameState(roomCode);
+        io.to(roomCode).emit("vetrolisci-game-updated", gameState);
 
-        // Only advance when both players have acknowledged
-        if (game.scoringAcknowledgments.size >= game.players.length) {
-          logger.log(`🎯 All players acknowledged, advancing from scoring`);
-          vetrolisciServer.advanceFromScoring(game);
-
-          // Emit updated game state to all players in the room
-          const gameState = vetrolisciServer.getGameState(roomCode);
-          io.to(roomCode).emit("vetrolisci-game-state", gameState);
-
-          logger.log(`🎯 Advanced from scoring to ${game.phase} phase`);
-        }
+        logger.log(`🎯 Transitioned from scoring to ${game.phase} phase`);
       }
     } catch (error) {
       console.error(`❌ Continue from scoring error: ${error.message}`);

@@ -1,66 +1,580 @@
-# Vetrolisci
+# AGENTS.md
 
-Multiplayer Vetrolisci (Pixies) card duel built with React, Vite, Express, and Socket.IO.
+Documentation for implementing AI agents and bot players in the Vetrolisci multiplayer card game.
 
-## Commands
+## Overview
 
-- `npm run dev` - Start server and client concurrently
-- `npm run server` - Start the Express + Socket.IO server
-- `npm run client` - Start the Vite dev server
-- `npm run build` - Build the client for production
-- `npm run preview` - Preview the production build
+Vetrolisci supports AI agent integration through a flexible architecture that allows for bot players to participate in games alongside human players. This document outlines the agent system design, implementation patterns, and testing strategies.
 
-## Architecture
+## 🎯 Agent Architecture
 
-- `src/client` - React UI for the game
-- `src/core` - Shared game logic
-- `src/server` - Express + Socket.IO server and game coordination
-- `src/shared` - Shared UI components, styles, and socket client
+### Core Agent Interface
 
-## Conventions
+AI agents communicate with the Vetrolisci game server through the same Socket.IO events as human players, ensuring consistent game logic and real-time synchronization.
 
-- React components colocate CSS in the same folder
-- Shared logic lives in `src/core`
+#### Agent Base Class Structure
 
-## Lessons Learned
+```javascript
+class VetrolisciAgent {
+  constructor(playerId, gameState) {
+    this.playerId = playerId;
+    this.gameState = gameState;
+    this.isActive = true;
+    this.thinking = false;
+  }
 
-### 2026-02-07: Initial agent setup
+  // Required interface methods
+  async makeDraftChoice(availableCards) {
+    // Implement card selection logic
+    return selectedCardIndex;
+  }
 
-**Problem:** Missing project context file for agent guidance.
-**Root cause:** `AGENTS.md` did not exist in the repo root.
-**Solution:** Added a minimal `AGENTS.md` with commands and architecture.
-**Prevention:** Keep `AGENTS.md` updated as architecture or commands change.
+  async makePlacementChoice(placementScenario) {
+    // Implement placement decision logic
+    return placementChoice;
+  }
 
-### 2026-02-07: Scoring phase never visible in multiplayer game
+  async handleDuplicateChoice(cards) {
+    // Decide which card to keep face-up
+    return choice; // 'existing' or 'new'
+  }
 
-**Problem:** TurnScoreModal never opens, `continue-from-scoring` handler never fires, and games get stuck after round completion.
-**Root cause:** `endRound()` in vetrolisci-server.js transitioned from `phase = 'scoring'` to `phase = 'draft'` (or `'finished'`) in the same function call, so clients never saw `phase === 'scoring'`.
-**Solution:** Split round lifecycle into two steps: (1) `endRound()` sets `phase = 'scoring'` and stops, (2) new `advanceFromScoring()` method (called by `continue-from-scoring` handler) increments round and starts next draft. Also included `roundScores` in `getGameState()` return and fixed `gameComplete` flag logic (`>= 3` not `> 3`).
-**Prevention:** When designing phase-based state machines, ensure each phase is observable at the client layer before automatic transitions. Consider explicit acknowledgment/continue actions for important milestones like scoring.
+  async handleValidatedPlacement(emptySpaces) {
+    // Choose empty space for face-down placement
+    return spaceIndex;
+  }
 
-### 2026-02-07: Server resilience improvements
+  // Game state update handler
+  updateGameState(newState) {
+    this.gameState = newState;
+  }
+}
+```
 
-**Problem:** Multiple server-side issues: expired rooms leaked game state, disconnects left rooms in unrecoverable state, CORS origins were hardcoded, and socket listeners stacked without cleanup.
-**Root cause:** Missing cleanup logic in various server lifecycle hooks.
-**Solution:**
+## 🤖 Agent Types
 
-- Added `removeGame()` calls in room cleanup to prevent memory leaks
-- Reset room to `waiting` status and remove game when player count drops below 2 during `playing`
-- Added both-player acknowledgment requirement for scoring phase advancement (prevents one player skipping before other sees score)
-- Changed CORS to read from `CORS_ORIGINS` env var or default to `*` in development
-- Fixed `onConnectionStatus()` to properly track and remove old listeners before adding new ones
-  **Prevention:** Always pair resource creation with cleanup. For multiplayer coordination, track which players have completed critical actions before advancing state.
+### 1. Simple Heuristic Agent
 
-### 2026-02-07: Code quality and polish improvements (Sprint 4)
+Implements basic game strategy using rule-based decision making:
 
-**Problem:** Multiple DX and polish issues: console.log statements cluttering production, render-phase mutations, eager audio initialization failing in SSR, hardcoded player names, duplicate modal implementations, and confusing error handling.
-**Root cause:** Technical debt from rapid development without consistent patterns.
-**Solution:**
+```javascript
+class HeuristicAgent extends VetrolisciAgent {
+  async makeDraftChoice(availableCards) {
+    // Prioritize high-value cards and special symbols
+    const scoredCards = availableCards.map((card, index) => ({
+      index,
+      score: this.calculateCardScore(card),
+    }));
 
-- Created logger utilities for client/server that respect dev mode (logger.log only outputs in development)
-- Fixed `isInitialRender` mutation in DraftPhase.jsx by moving to useEffect
-- Made AudioService lazy-initialize on first use instead of at import time
-- Added player name input fields in menu/join views with fallback to "Host"/"Guest"
-- Refactored ScoreboardModal to use shared Modal component (removed 100+ lines of duplicate code)
-- Fixed `emit()` to only reject on transport failures, always resolve with response object (callers check `response.success`)
-  **Prevention:** Use logger utilities instead of raw console.log, avoid mutations during render phase, lazy-load resources, extract shared UI patterns early, distinguish transport-level vs application-level errors in API design.
+    return scoredCards.sort((a, b) => b.score - a.score)[0].index;
+  }
+
+  calculateCardScore(card) {
+    let score = card.value;
+
+    // Bonus for special symbols
+    if (card.symbol === "spiral") score += 2;
+    if (card.symbol === "cross") score -= 1;
+
+    // Bonus for cards that fill gaps in player's hand
+    if (this.hasGapsInRange(card.value)) score += 1;
+
+    return score;
+  }
+}
+```
+
+### 2. Strategic Agent
+
+Uses more sophisticated strategy including:
+
+- **Zone Control**: Optimizing color group formations
+- **Future Planning**: Anticipating opponent moves
+- **Risk Assessment**: Evaluating placement consequences
+
+```javascript
+class StrategicAgent extends VetrolisciAgent {
+  async makeDraftChoice(availableCards) {
+    const evaluatedCards = availableCards.map((card) => ({
+      card,
+      score: this.evaluateCardStrategicValue(card),
+    }));
+
+    // Use minimax or expectiminimax for decision
+    return this.selectBestMove(evaluatedCards);
+  }
+
+  evaluateCardStrategicValue(card) {
+    return {
+      immediate: this.calculateImmediateValue(card),
+      potential: this.calculatePlacementPotential(card),
+      opponentDisruption: this.calculateOpponentDisruption(card),
+    };
+  }
+}
+```
+
+### 3. Learning Agent
+
+Implements machine learning for adaptive gameplay:
+
+```javascript
+class LearningAgent extends VetrolisciAgent {
+  constructor(playerId, modelPath) {
+    super(playerId);
+    this.model = this.loadModel(modelPath);
+    this.experienceBuffer = [];
+    this.learningRate = 0.1;
+  }
+
+  async makeDraftChoice(availableCards) {
+    const gameFeatures = this.extractGameFeatures();
+    const predictions = availableCards.map((card) => this.model.predict({ card, gameFeatures }));
+
+    return this.selectAction(predictions);
+  }
+
+  // Store game outcomes for training
+  recordExperience(state, action, reward) {
+    this.experienceBuffer.push({ state, action, reward });
+
+    if (this.experienceBuffer.length >= BATCH_SIZE) {
+      this.trainModel();
+    }
+  }
+}
+```
+
+## 🎮 Agent Integration
+
+### Socket.IO Event Handling
+
+Agents must handle the same events as human players:
+
+```javascript
+class AgentSocketHandler {
+  constructor(agent) {
+    this.agent = agent;
+    this.setupEventHandlers();
+  }
+
+  setupEventHandlers() {
+    // Draft phase events
+    socket.on("vetrolisci-draft-start", (data) => {
+      this.agent.updateGameState(data.gameState);
+    });
+
+    socket.on("vetrolisci-draft-choice", async (data) => {
+      const choice = await this.agent.makeDraftChoice(data.availableCards);
+      socket.emit("vetrolisci-pick-card", { cardIndex: choice });
+    });
+
+    // Placement events
+    socket.on("vetrolisci-placement-required", async (data) => {
+      const choice = await this.agent.makePlacementChoice(data.scenario);
+      socket.emit("vetrolisci-placement-choice", choice);
+    });
+
+    // Choice modal events
+    socket.on("vetrolisci-duplicate-choice", async (data) => {
+      const choice = await this.agent.handleDuplicateChoice(data.cards);
+      socket.emit("vetrolisci-duplicate-decision", { choice });
+    });
+
+    socket.on("vetrolisci-validated-placement", async (data) => {
+      const choice = await this.agent.handleValidatedPlacement(data.emptySpaces);
+      socket.emit("vetrolisci-placement-position", { position: choice });
+    });
+  }
+}
+```
+
+### Agent Lifecycle Management
+
+```javascript
+class AgentManager {
+  constructor() {
+    this.activeAgents = new Map();
+    this.agentConfigs = new Map();
+  }
+
+  // Create and register a new agent
+  createAgent(playerId, agentType, config = {}) {
+    const agent = this.instantiateAgent(agentType, config);
+    this.activeAgents.set(playerId, agent);
+    this.agentConfigs.set(playerId, config);
+
+    return agent;
+  }
+
+  // Update all agents with new game state
+  updateAllAgents(gameState) {
+    this.activeAgents.forEach((agent) => {
+      agent.updateGameState(gameState);
+    });
+  }
+
+  // Remove agent when player disconnects
+  removeAgent(playerId) {
+    const agent = this.activeAgents.get(playerId);
+    if (agent) {
+      agent.cleanup();
+      this.activeAgents.delete(playerId);
+      this.agentConfigs.delete(playerId);
+    }
+  }
+}
+```
+
+## 🧪 Testing & Validation
+
+### Bot vs Bot Testing
+
+Run tournaments to evaluate agent performance:
+
+```javascript
+class AgentTournament {
+  constructor(agents, rounds = 100) {
+    this.agents = agents;
+    this.rounds = rounds;
+    this.results = new Map();
+  }
+
+  async runTournament() {
+    for (let i = 0; i < this.rounds; i++) {
+      for (let j = 0; j < this.agents.length - 1; j++) {
+        for (let k = j + 1; k < this.agents.length; k++) {
+          const result = await this.matchAgents(this.agents[j], this.agents[k]);
+          this.recordResult(this.agents[j], this.agents[k], result);
+        }
+      }
+    }
+
+    return this.generateReport();
+  }
+
+  async matchAgents(agent1, agent2) {
+    const roomId = `tournament-${Date.now()}-${Math.random()}`;
+
+    // Setup game room
+    // Configure both agents
+    // Run game to completion
+    // Return match results
+  }
+}
+```
+
+### Performance Metrics
+
+Track key performance indicators:
+
+```javascript
+class AgentMetrics {
+  constructor() {
+    this.metrics = {
+      winRate: new Map(),
+      averageScore: new Map(),
+      decisionTime: new Map(),
+      placementsEfficiency: new Map(),
+    };
+  }
+
+  recordDecision(playerId, decisionType, timeMs, quality = null) {
+    const metrics = this.metrics;
+
+    // Track decision speed
+    if (!metrics.decisionTime.has(playerId)) {
+      metrics.decisionTime.set(playerId, []);
+    }
+    metrics.decisionTime.get(playerId).push({
+      type: decisionType,
+      time: timeMs,
+    });
+
+    // Track placement quality if available
+    if (quality) {
+      this.recordQuality(playerId, decisionType, quality);
+    }
+  }
+
+  generateReport() {
+    return {
+      winRates: this.calculateWinRates(),
+      averageScores: this.calculateAverageScores(),
+      decisionSpeed: this.calculateDecisionSpeed(),
+      efficiency: this.calculateEfficiency(),
+    };
+  }
+}
+```
+
+## 🔧 Configuration
+
+### Agent Configuration Schema
+
+```javascript
+const AGENT_CONFIGS = {
+  difficulty: "easy" | "medium" | "hard",
+  thinkingTime: {
+    draft: 1000, // ms
+    placement: 500, // ms
+    choice: 300, // ms
+  },
+  strategy: {
+    aggressive: 0.7, // prefer high-value cards
+    defensive: 0.3, // block opponent
+    balanced: 0.5,
+  },
+  learning: {
+    enabled: false,
+    modelPath: "./models/default.pkl",
+    updateFrequency: 10,
+  },
+  behavior: {
+    simulateTyping: true, // Add artificial delays
+    makeMistakes: 0.05, // Probability of suboptimal moves
+    chatMessages: false, // Enable bot chat
+  },
+};
+```
+
+### Environment Variables
+
+Configure agent behavior through environment variables:
+
+```bash
+# Enable AI agents in development
+VETROLISCI_ENABLE_AGENTS=true
+
+# Default agent type for testing
+VETROLISCI_DEFAULT_AGENT=heuristic
+
+# Tournament mode
+VETROLISCI_TOURNAMENT_MODE=false
+
+# Agent decision timeouts (ms)
+VETROLISCI_AGENT_TIMEOUT=5000
+```
+
+## 🎯 Strategy Patterns
+
+### Draft Phase Strategies
+
+```javascript
+const DRAFT_STRATEGIES = {
+  // High-value first
+  valueMaximizer: (cards) => {
+    return cards.sort((a, b) => b.value - a.value)[0];
+  },
+
+  // Color control
+  colorGrouper: (cards, playerState) => {
+    const colorCounts = this.getPlayerColorCounts(playerState);
+    return cards.find((card) => colorCounts[card.color] < 3 && card.value > 6) || cards[0];
+  },
+
+  // Disrupt opponent
+  opponentDisruptor: (cards, gameState) => {
+    const opponentState = gameState.players[1 - this.playerId];
+    return cards.find((card) => !opponentState.hasValidatedNumber(card.value)) || cards[0];
+  },
+};
+```
+
+### Placement Strategies
+
+```javascript
+const PLACEMENT_STRATEGIES = {
+  // Maximize validated points
+  validateMax: (card, grid) => {
+    const placements = this.getValidPlacements(card, grid);
+    return placements.find((p) => this.validatesMaxValue(p)) || placements[0];
+  },
+
+  // Build color zones
+  zoneBuilder: (card, grid, playerState) => {
+    const placements = this.getValidPlacements(card, grid);
+    return placements.find((p) => this.createsLargestZone(p, card.color, grid)) || placements[0];
+  },
+};
+```
+
+## 🚀 Deployment
+
+### Production Agent Deployment
+
+```javascript
+// Server-side agent manager
+const agentManager = new AgentManager({
+  maxConcurrentAgents: 10,
+  decisionTimeout: 30000,
+  resourceLimits: {
+    memory: "128MB",
+    cpu: "25%",
+  },
+});
+
+// Register agent types
+agentManager.registerAgentType("heuristic", HeuristicAgent);
+agentManager.registerAgentType("strategic", StrategicAgent);
+agentManager.registerAgentType("learning", LearningAgent);
+
+// Start agent server
+agentManager.start();
+```
+
+### Docker Support
+
+```dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY . .
+EXPOSE 8001
+
+# Run with agent support
+CMD ["npm", "run", "server"]
+```
+
+## 📊 Analytics & Monitoring
+
+### Agent Performance Dashboard
+
+Track agent performance in real-time:
+
+```javascript
+class AgentAnalytics {
+  constructor() {
+    this.metrics = {
+      gamesPlayed: 0,
+      agentsActive: 0,
+      averageDecisionTime: 0,
+      errorRate: 0,
+    };
+  }
+
+  trackAgentEvent(playerId, event, data) {
+    // Log agent decisions and outcomes
+    console.log(`Agent ${playerId}: ${event}`, data);
+
+    // Update real-time metrics
+    this.updateMetrics(event, data);
+  }
+
+  generateDashboardData() {
+    return {
+      activeAgents: this.getActiveAgentCount(),
+      performance: this.getPerformanceMetrics(),
+      recentGames: this.getRecentGameStats(),
+      systemHealth: this.getSystemHealth(),
+    };
+  }
+}
+```
+
+## 🔒 Security Considerations
+
+### Agent Validation
+
+Ensure agents follow game rules:
+
+```javascript
+class AgentValidator {
+  static validateDecision(agent, decision, gameState) {
+    // Verify decision is legal
+    if (!this.isLegalMove(decision, gameState)) {
+      throw new Error(`Illegal move by agent ${agent.id}`);
+    }
+
+    // Check decision timing
+    if (decision.responseTime > AGENT_TIMEOUT) {
+      this.flagAgent(agent, "slow_response");
+    }
+
+    // Validate decision quality
+    if (this.isSuspiciousPattern(agent, decision)) {
+      this.flagAgent(agent, "suspicious_behavior");
+    }
+  }
+}
+```
+
+### Rate Limiting
+
+Prevent agent spam:
+
+```javascript
+class AgentRateLimiter {
+  constructor() {
+    this.limits = {
+      decisionsPerMinute: 60,
+      gamesPerHour: 10,
+      maxConcurrentGames: 3,
+    };
+  }
+
+  canMakeDecision(agentId) {
+    const agent = this.getAgent(agentId);
+    return this.checkLimits(agent);
+  }
+}
+```
+
+## 📝 Best Practices
+
+### Development Guidelines
+
+1. **Modular Design**: Keep agent logic separate from game logic
+2. **Event-Driven**: Use Socket.IO events for all agent communication
+3. **Error Handling**: Implement robust error handling for agent failures
+4. **Testing**: Always test agents against human players and other agents
+5. **Performance**: Monitor agent decision times and resource usage
+6. **Fairness**: Ensure agents don't have unfair advantages
+
+### Code Examples
+
+See the following files for implementation examples:
+
+- **Agent Base**: `src/agents/base-agent.js`
+- **Heuristic Agent**: `src/agents/heuristic-agent.js`
+- **Agent Manager**: `src/server/agent-manager.js`
+- **Testing Suite**: `tests/agents/`
+
+## 🆘 Troubleshooting
+
+### Common Issues
+
+1. **Agent Not Responding**: Check Socket.IO connection and event handlers
+2. **Slow Decisions**: Optimize algorithm or increase timeout values
+3. **Memory Leaks**: Ensure proper cleanup of agent instances
+4. **Synchronization Issues**: Verify game state updates are atomic
+
+### Debug Commands
+
+```bash
+# List active agents
+npm run agents:list
+
+# Start agent tournament
+npm run agents:tournament
+
+# Monitor agent performance
+npm run agents:monitor
+
+# Reset agent statistics
+npm run agents:reset-stats
+```
+
+## 📚 Additional Resources
+
+- [Game Rules Documentation](vetrolisci-ruleset.md)
+- [Frontend Development Guide](frontend-guide.md)
+- [Backend API Documentation](../server/)
+- [Testing Guidelines](../tests/)
+
+---
+
+**Note**: This agent system is designed for testing, demonstration, and single-player practice modes. For competitive multiplayer, human vs human gameplay is recommended to ensure fair competition.
