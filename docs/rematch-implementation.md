@@ -5,7 +5,7 @@
 
 ## Objective
 
-Implement suggestion 5 from `codex-fullreview.md`:
+Implement suggestion 5 from [docs/codex-fullreview.md](codex-fullreview.md):
 
 > Add rematch flow in same room.
 > Reason: keeps players engaged by removing menu friction after game end.
@@ -183,7 +183,7 @@ Manual checks:
 
 Regression checks:
 
-- Re-run existing checklist from `codex-fullreview.md` (create/join/draft/scoring/final/reconnect).
+- Re-run existing checklist from [docs/codex-fullreview.md](codex-fullreview.md) (create/join/draft/scoring/final/reconnect).
 
 ## Risks and Mitigations
 

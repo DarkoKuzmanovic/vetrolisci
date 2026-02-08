@@ -237,7 +237,7 @@
 
 ### [x] `Easy Win` 5.4 Capture a short regression checklist
 
-- Files: `codex-fullreview.md`
+- Files: `docs/codex-fullreview.md`
 - Done when:
 
 1. Manual checks exist for create room, join room, pick flow, scoring continue, final game, reconnect.

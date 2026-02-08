@@ -170,6 +170,7 @@ public/
 
 - **[Game Rules](docs/vetrolisci-ruleset.md)** - Complete Vetrolisci rules and scoring details
 - **[Frontend Guide](docs/frontend-guide.md)** - Detailed component documentation and UI architecture
+- **[Full Review Plan](docs/codex-fullreview.md)** - Sprint backlog for fixes, dedupe, and improvements
 - **[Code Review](docs/vetrolisci-review.md)** - Recent code review findings
 - **[Implementation Plan](docs/vetrolisci-review-implement.md)** - Action plan based on the code review
 - **[Rematch Plan](docs/rematch-implementation.md)** - Two-player rematch flow in the same room
