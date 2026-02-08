@@ -8,6 +8,16 @@ class SocketClient {
     this.listeners = new Map();
   }
 
+  resetSocket() {
+    if (!this.socket) return;
+
+    this.socket.removeAllListeners();
+    this.socket.disconnect();
+    this.socket = null;
+    this.connected = false;
+    this.listeners.clear();
+  }
+
   connect(serverUrl) {
     // Auto-detect server URL based on current page URL
     if (!serverUrl) {
@@ -19,6 +29,12 @@ class SocketClient {
     if (this.socket?.connected) {
       logger.log("🔌 Socket already connected");
       return Promise.resolve();
+    }
+
+    // If a stale/disconnected instance exists, tear it down before reconnecting
+    if (this.socket && !this.socket.connected) {
+      logger.log("🔌 Resetting stale socket instance before reconnect");
+      this.resetSocket();
     }
 
     logger.log(`🔌 Connecting to server: ${serverUrl}`);
@@ -45,7 +61,7 @@ class SocketClient {
 
       this.socket.on("connect_error", (error) => {
         clearTimeout(timeout);
-        console.error("🔌 Connection error:", error);
+        logger.error("🔌 Connection error:", error);
         reject(error);
       });
 
@@ -60,7 +76,7 @@ class SocketClient {
       });
 
       this.socket.on("reconnect_error", (error) => {
-        console.error("🔌 Reconnection error:", error);
+        logger.error("🔌 Reconnection error:", error);
       });
     });
   }
@@ -68,10 +84,7 @@ class SocketClient {
   disconnect() {
     if (this.socket) {
       logger.log("🔌 Disconnecting from server");
-      this.socket.disconnect();
-      this.socket = null;
-      this.connected = false;
-      this.listeners.clear();
+      this.resetSocket();
     }
   }
 

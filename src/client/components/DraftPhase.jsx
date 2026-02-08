@@ -1,11 +1,13 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Card from "./Card.jsx";
 import { getPickableCards } from "../../core/placement.js";
+import logger from "../../shared/utils/logger.js";
 import "./DraftPhase.css";
 
 const DraftPhase = ({ gameState, playerIndex, onCardPick, error, animatingCards }) => {
   const isInitialRender = useRef(true);
+  const renderCountRef = useRef(0);
 
   if (!gameState || !gameState.draftState) {
     return null;
@@ -13,8 +15,6 @@ const DraftPhase = ({ gameState, playerIndex, onCardPick, error, animatingCards 
 
   const { draftState, players, currentPickingPlayer } = gameState;
   const currentPlayer = players[playerIndex];
-  const opponentIndex = playerIndex === 0 ? 1 : 0;
-  const opponent = players[opponentIndex];
 
   const isMyTurn = currentPickingPlayer?.index === playerIndex;
   const currentPickingPlayerName = currentPickingPlayer?.name || "Unknown";
@@ -25,7 +25,12 @@ const DraftPhase = ({ gameState, playerIndex, onCardPick, error, animatingCards 
   const pickNumber = Math.min(picksCompleted + 1, totalPicks);
 
   // Get pickable cards with restrictions
-  const pickableCards = draftState.revealedCards ? getPickableCards(currentPlayer.grid, draftState.revealedCards) : [];
+  const pickableCards = useMemo(() => {
+    if (!draftState.revealedCards) {
+      return [];
+    }
+    return getPickableCards(currentPlayer.grid, draftState.revealedCards);
+  }, [currentPlayer.grid, draftState.revealedCards]);
 
   // Set initial render to false after first render with cards
   useEffect(() => {
@@ -33,6 +38,19 @@ const DraftPhase = ({ gameState, playerIndex, onCardPick, error, animatingCards 
       isInitialRender.current = false;
     }
   }, [pickableCards.length]);
+
+  // Dev-only checkpoint to profile component churn while tuning render paths
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+
+    renderCountRef.current += 1;
+    logger.debug("[perf] DraftPhase render", {
+      count: renderCountRef.current,
+      round: gameState.currentRound,
+      picksCompleted,
+      cardsVisible: pickableCards.length,
+    });
+  });
 
   return (
     <div className="draft-phase">

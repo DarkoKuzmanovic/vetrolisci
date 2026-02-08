@@ -90,7 +90,7 @@ function calculateColorZoneBonus(grid, currentRound, breakdown) {
   }
 
   // Step 1: Create a modified grid where each multi card takes on the color of its best adjacent card
-  const resolvedGrid2D = JSON.parse(JSON.stringify(grid2D)); // Deep copy
+  const resolvedGrid2D = grid2D.map((row) => row.map((card) => (card ? { ...card } : null)));
 
   for (let i = 0; i < 3; i++) {
     for (let j = 0; j < 3; j++) {

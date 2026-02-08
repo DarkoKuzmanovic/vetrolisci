@@ -1,3 +1,5 @@
+import logger from "../../shared/utils/logger.js";
+
 class AudioService {
   constructor() {
     this.soundEffectsEnabled = true;
@@ -41,7 +43,7 @@ class AudioService {
       // Reset to beginning and play
       sound.currentTime = 0;
       sound.play().catch((error) => {
-        console.log("Could not play sound:", error);
+        logger.warn("Could not play sound:", error);
       });
     }
   }
@@ -55,7 +57,7 @@ class AudioService {
 
     if (this.backgroundMusic) {
       this.backgroundMusic.play().catch((error) => {
-        console.log("Could not play background music:", error);
+        logger.warn("Could not play background music:", error);
       });
     }
   }
