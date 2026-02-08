@@ -1,13 +1,13 @@
 # Plan: Rematch Flow in Same Room
 
-**Created:** 2026-02-08  
+**Created:** 2026-02-08
 **Status:** Ready for Implementation
 
 ## Objective
 
 Implement suggestion 5 from `codex-fullreview.md`:
 
-> Add rematch flow in same room.  
+> Add rematch flow in same room.
 > Reason: keeps players engaged by removing menu friction after game end.
 
 Players should be able to start a new match with the same opponent and room code from the game-complete screen, without returning to the menu.
@@ -29,16 +29,19 @@ Relevant files:
 ## Approaches Considered
 
 1. Host-only restart
+
 - Flow: host clicks rematch and server immediately starts a new game.
 - Pros: simplest implementation.
 - Cons: can force the other player into a new game unexpectedly.
 
 2. Two-player confirmation (recommended)
+
 - Flow: each player clicks rematch; server starts when both have confirmed.
 - Pros: fair, explicit consent, easy to message in UI.
 - Cons: adds minimal rematch progress state.
 
 3. Auto-rematch countdown with cancel
+
 - Flow: automatic countdown starts at game end; either player can cancel.
 - Pros: fastest transition when both want to continue.
 - Cons: higher complexity, cancellation edge cases, more UX states.
@@ -65,16 +68,21 @@ Event contract:
 
 1. Player emits `vetrolisci-request-rematch` with `{ roomCode }`.
 2. Server validates:
+
 - room exists
 - game exists and `phase === "finished"`
 - requester belongs to room
 - no disconnected player seats
+
 3. Server records vote by reconnect token (idempotent).
 4. Server broadcasts progress:
+
 - `accepted`
 - `required`
 - `acceptedPlayerIndexes` (optional)
+
 5. When `accepted === required`, server:
+
 - clears prior game state
 - creates new game with existing room players
 - resets rematch tracking
