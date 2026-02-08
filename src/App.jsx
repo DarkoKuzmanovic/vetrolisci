@@ -90,81 +90,89 @@ function App() {
     }
   }, [currentView, gameData?.roomCode, currentRoom?.room?.code, roomCode, playerName, reconnectToken, pushToast]);
 
-  const attachSocketListeners = useCallback(() => {
-    socketClient.onConnectionStatus(({ connected, reconnected }) => {
-      setConnected(connected);
-      if (reconnected) {
-        logger.log("🔌 Reconnected to server");
-        pushToast("Reconnected", "success");
-        attemptAutoRejoin();
-      }
-    });
+  // Stable ref that always points to the latest attemptAutoRejoin without
+  // causing effect re-runs when its dependencies change.
+  const attemptAutoRejoinRef = useRef(attemptAutoRejoin);
+  useEffect(() => {
+    attemptAutoRejoinRef.current = attemptAutoRejoin;
+  }, [attemptAutoRejoin]);
 
-    socketClient.onError((error) => {
-      pushToast("Connection error", "error");
-    });
+  // One-time socket connection + listener setup. Cleanup only on unmount.
+  useEffect(() => {
+    let cancelled = false;
 
-    socketClient.onPlayerJoined((data) => {
-      logger.log("👤 Player joined:", data);
-    });
-
-    socketClient.on("game-started", (data) => {
-      logger.log("🚀 Game started for room:", data.room.code);
-
-      let playerIndex = 0;
-      if (data.room && data.room.players) {
-        const myPlayer = data.room.players.find((p) => p.id === socketClient.getSocketId());
-        if (myPlayer) {
-          playerIndex = data.room.players.indexOf(myPlayer);
+    const attachSocketListeners = () => {
+      socketClient.onConnectionStatus(({ connected: isConnected, reconnected }) => {
+        if (cancelled) return;
+        setConnected(isConnected);
+        if (reconnected) {
+          logger.log("🔌 Reconnected to server");
+          pushToast("Reconnected", "success");
+          attemptAutoRejoinRef.current();
         }
-      }
-
-      logger.log(`🎯 Joined as Player ${playerIndex} (${data.room.players[playerIndex]?.name})`);
-
-      setGameData({
-        roomCode: data.room.code,
-        playerIndex,
-        gameState: data.gameState,
       });
-      setCurrentView("game");
-    });
 
-    socketClient.on("game-start-error", (data) => {
-      pushToast(data?.error || "Failed to start game", "error");
-      setCurrentView("menu");
-      setCurrentRoom(null);
-      setGameData(null);
-    });
-  }, [pushToast, attemptAutoRejoin]);
+      socketClient.onError(() => {
+        if (cancelled) return;
+        pushToast("Connection error", "error");
+      });
 
-  const initializeSocketConnection = useCallback(
-    async ({ showLoader = false } = {}) => {
-      try {
-        if (showLoader) {
-          setLoading(true);
+      socketClient.onPlayerJoined((data) => {
+        logger.log("👤 Player joined:", data);
+      });
+
+      socketClient.on("game-started", (data) => {
+        if (cancelled) return;
+        logger.log("🚀 Game started for room:", data.room.code);
+
+        let playerIndex = 0;
+        if (data.room && data.room.players) {
+          const myPlayer = data.room.players.find((p) => p.id === socketClient.getSocketId());
+          if (myPlayer) {
+            playerIndex = data.room.players.indexOf(myPlayer);
+          }
         }
+
+        logger.log(`🎯 Joined as Player ${playerIndex} (${data.room.players[playerIndex]?.name})`);
+
+        setGameData({
+          roomCode: data.room.code,
+          playerIndex,
+          gameState: data.gameState,
+        });
+        setCurrentView("game");
+      });
+
+      socketClient.on("game-start-error", (data) => {
+        if (cancelled) return;
+        pushToast(data?.error || "Failed to start game", "error");
+        setCurrentView("menu");
+        setCurrentRoom(null);
+        setGameData(null);
+      });
+    };
+
+    (async () => {
+      try {
+        setLoading(true);
         await socketClient.connect();
+        if (cancelled) return;
         setConnected(true);
         attachSocketListeners();
       } catch (err) {
         logger.error("Failed to connect to server:", err);
-        pushToast("Connection failed", "error");
+        if (!cancelled) pushToast("Connection failed", "error");
       } finally {
-        if (showLoader) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
-    },
-    [attachSocketListeners],
-  );
-
-  useEffect(() => {
-    initializeSocketConnection({ showLoader: true });
+    })();
 
     return () => {
+      cancelled = true;
       socketClient.disconnect();
     };
-  }, [initializeSocketConnection]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (initialConnectionCheck.current) {
@@ -187,12 +195,16 @@ function App() {
       return;
     }
     setReconnecting(true);
-    await initializeSocketConnection();
-    if (socketClient.isConnected()) {
+    try {
+      await socketClient.connect();
+      setConnected(true);
       pushToast("Reconnected", "success");
       await attemptAutoRejoin();
+    } catch {
+      pushToast("Reconnect failed", "error");
+    } finally {
+      setReconnecting(false);
     }
-    setReconnecting(false);
   };
 
   const handleJoinGame = () => {

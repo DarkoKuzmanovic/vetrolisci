@@ -551,16 +551,21 @@ io.on("connection", (socket) => {
           (player) => player.reconnectToken === playerInfo.reconnectToken,
         );
 
-        if (disconnectedPlayerIndex !== -1 && room.status === "playing") {
+        if (disconnectedPlayerIndex !== -1) {
+          // Always give a grace period so transient disconnects (HMR, reload,
+          // flaky network) don't nuke the room.
           const disconnectedPlayer = room.players[disconnectedPlayerIndex];
           disconnectedPlayer.id = null;
           disconnectedPlayer.disconnectedAt = Date.now();
 
+          // Use a shorter grace period for "waiting" rooms (15s vs full 60s)
+          const gracePeriod = room.status === "playing" ? RECONNECT_GRACE_PERIOD_MS : 15_000;
+
           socket.to(playerInfo.roomCode).emit("player-disconnected", {
             playerName: disconnectedPlayer.name,
             playerIndex: disconnectedPlayerIndex,
-            gracePeriodMs: RECONNECT_GRACE_PERIOD_MS,
-            reconnectBy: disconnectedPlayer.disconnectedAt + RECONNECT_GRACE_PERIOD_MS,
+            gracePeriodMs: gracePeriod,
+            reconnectBy: disconnectedPlayer.disconnectedAt + gracePeriod,
           });
 
           clearReconnectGraceTimer(room.code, disconnectedPlayer.reconnectToken);
@@ -595,14 +600,16 @@ io.on("connection", (socket) => {
               return;
             }
 
-            activeRoom.status = "waiting";
-            vetrolisciServer.removeGame(activeRoom.code);
+            if (activeRoom.status === "playing") {
+              activeRoom.status = "waiting";
+              vetrolisciServer.removeGame(activeRoom.code);
+            }
             io.to(activeRoom.code).emit("room-status-updated", {
               status: activeRoom.status,
               reason: "reconnect_timeout",
               remainingPlayers: activeRoom.players.length,
             });
-          }, RECONNECT_GRACE_PERIOD_MS);
+          }, gracePeriod);
 
           reconnectGraceTimers.set(timerKey, graceTimer);
         } else {
