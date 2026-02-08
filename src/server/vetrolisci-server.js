@@ -21,6 +21,7 @@ export class VetrolisciServer {
         id: player.id,
         name: player.name,
         index,
+        reconnectToken: player.reconnectToken || null,
         grid: Array(9).fill(null), // 3x3 grid
         scores: [0, 0, 0], // Scores for 3 rounds
       })),
@@ -453,17 +454,25 @@ export class VetrolisciServer {
     if (!game || !game.draftState) return null;
 
     const playerIndex = getCurrentPickingPlayer(game.draftState);
-    return playerIndex !== null ? game.players[playerIndex] : null;
+    if (playerIndex === null) return null;
+
+    const { reconnectToken, ...playerState } = game.players[playerIndex];
+    return playerState;
   }
 
   getGameState(roomCode) {
     const game = this.games.get(roomCode);
     if (!game) return null;
 
+    const sanitizedPlayers = game.players.map((player) => {
+      const { reconnectToken, ...playerState } = player;
+      return playerState;
+    });
+
     return {
       id: game.id,
       gameType: game.gameType,
-      players: game.players,
+      players: sanitizedPlayers,
       currentRound: game.currentRound,
       phase: game.phase,
       turn: game.turn,

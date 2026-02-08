@@ -1,6 +1,7 @@
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import { randomUUID } from "crypto";
 import vetrolisciServer from "./vetrolisci-server.js";
 import logger from "./logger.js";
 
@@ -14,10 +15,52 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 8001;
+const RECONNECT_GRACE_PERIOD_MS = Number.parseInt(process.env.VETROLISCI_RECONNECT_GRACE_MS || "60000", 10);
 
 // Room management
 const rooms = new Map();
 const players = new Map(); // socketId -> playerInfo
+const reconnectGraceTimers = new Map(); // `${roomCode}:${token}` -> timeoutId
+
+function sanitizePlayerForClient(player) {
+  return {
+    id: player.id,
+    name: player.name,
+    joinedAt: player.joinedAt,
+    disconnectedAt: player.disconnectedAt || null,
+  };
+}
+
+function buildRoomResponse(room, playerIndex) {
+  return {
+    code: room.code,
+    gameType: room.gameType,
+    playerIndex,
+    players: room.players.map(sanitizePlayerForClient),
+  };
+}
+
+function getReconnectTimerKey(roomCode, reconnectToken) {
+  return `${roomCode}:${reconnectToken}`;
+}
+
+function clearReconnectGraceTimer(roomCode, reconnectToken) {
+  const timerKey = getReconnectTimerKey(roomCode, reconnectToken);
+  const timeoutId = reconnectGraceTimers.get(timerKey);
+  if (!timeoutId) return;
+
+  clearTimeout(timeoutId);
+  reconnectGraceTimers.delete(timerKey);
+}
+
+function clearRoomReconnectGraceTimers(roomCode) {
+  const keyPrefix = `${roomCode}:`;
+  reconnectGraceTimers.forEach((timeoutId, timerKey) => {
+    if (!timerKey.startsWith(keyPrefix)) return;
+    clearTimeout(timeoutId);
+    reconnectGraceTimers.delete(timerKey);
+  });
+}
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
@@ -51,6 +94,7 @@ function cleanupExpiredRooms() {
     if (now - room.createdAt > THIRTY_MINUTES) {
       logger.log(`🧹 Cleaning up expired room: ${roomCode}`);
       rooms.delete(roomCode);
+      clearRoomReconnectGraceTimers(roomCode);
       // Also remove the game state to prevent memory leaks
       vetrolisciServer.removeGame(roomCode);
     }
@@ -85,16 +129,20 @@ io.on("connection", (socket) => {
     }
   };
 
+  const isRoomPausedForReconnect = (room) => room.players.some((player) => player.disconnectedAt);
+
   // Create room
   socket.on("create-room", (data, callback) => {
     try {
-      const { playerName = "Host" } = data || {};
+      const { playerName = "Host", reconnectToken } = data || {};
       const roomCode = generateRoomCode();
 
       const hostPlayer = {
         id: socket.id,
         name: playerName,
         joinedAt: Date.now(),
+        reconnectToken: reconnectToken || randomUUID(),
+        disconnectedAt: null,
       };
 
       const room = {
@@ -116,12 +164,7 @@ io.on("connection", (socket) => {
         success: true,
         roomCode,
         gameType: room.gameType,
-        room: {
-          code: room.code,
-          gameType: room.gameType,
-          playerIndex: 0, // Host is always player 0
-          players: room.players,
-        },
+        room: buildRoomResponse(room, 0), // Host is always player 0
       });
     } catch (error) {
       console.error("❌ Error creating room:", error);
@@ -166,17 +209,63 @@ io.on("connection", (socket) => {
   // Join room
   socket.on("join-room", (data, callback) => {
     try {
-      const { roomCode, playerName = "Anonymous" } = data || {};
+      const { roomCode, playerName = "Anonymous", reconnectToken } = data || {};
       if (!roomCode) {
         callback({ success: false, error: "Room code is required" });
         return;
       }
-      const room = rooms.get(roomCode.toUpperCase());
+      const normalizedRoomCode = roomCode.toUpperCase();
+      const room = rooms.get(normalizedRoomCode);
+      const sessionReconnectToken = reconnectToken || randomUUID();
 
       if (!room) {
         callback({
           success: false,
           error: "Room not found or expired",
+        });
+        return;
+      }
+
+      const reconnectingPlayerIndex = room.players.findIndex(
+        (player) => player.reconnectToken === sessionReconnectToken && player.disconnectedAt,
+      );
+
+      // Reclaim a disconnected seat if the reconnect token matches.
+      if (reconnectingPlayerIndex !== -1) {
+        const reconnectingPlayer = room.players[reconnectingPlayerIndex];
+        reconnectingPlayer.id = socket.id;
+        reconnectingPlayer.disconnectedAt = null;
+        if (!reconnectingPlayer.name) {
+          reconnectingPlayer.name = playerName;
+        }
+        players.set(socket.id, { roomCode: room.code, ...reconnectingPlayer });
+        socket.join(room.code);
+        clearReconnectGraceTimer(room.code, reconnectingPlayer.reconnectToken);
+
+        const game = vetrolisciServer.getGame(room.code);
+        if (game) {
+          const gamePlayer = game.players.find((player) => player.reconnectToken === reconnectingPlayer.reconnectToken);
+          if (gamePlayer) {
+            gamePlayer.id = socket.id;
+          }
+        }
+
+        if (room.players.length === 2 && room.players.every((player) => !player.disconnectedAt)) {
+          room.status = "playing";
+        }
+
+        const gameState = vetrolisciServer.getGameState(room.code);
+        io.to(room.code).emit("player-rejoined", {
+          playerName: reconnectingPlayer.name,
+          playerIndex: reconnectingPlayerIndex,
+        });
+        io.to(room.code).emit("vetrolisci-game-state", gameState);
+
+        callback({
+          success: true,
+          rejoined: true,
+          room: buildRoomResponse(room, reconnectingPlayerIndex),
+          gameState,
         });
         return;
       }
@@ -201,6 +290,8 @@ io.on("connection", (socket) => {
         id: socket.id,
         name: playerName,
         joinedAt: Date.now(),
+        reconnectToken: sessionReconnectToken,
+        disconnectedAt: null,
       };
 
       room.players.push(player);
@@ -211,18 +302,13 @@ io.on("connection", (socket) => {
 
       // Notify other players in the room
       socket.to(room.code).emit("player-joined", {
-        player,
+        player: sanitizePlayerForClient(player),
         playerCount: room.players.length,
       });
 
       callback({
         success: true,
-        room: {
-          code: room.code,
-          gameType: room.gameType,
-          playerIndex: room.players.length - 1,
-          players: room.players,
-        },
+        room: buildRoomResponse(room, room.players.length - 1),
       });
 
       // Start game if room is full
@@ -235,7 +321,10 @@ io.on("connection", (socket) => {
           logger.log(`🎮 Vetrolisci game created for room ${room.code}`);
 
           io.to(room.code).emit("game-started", {
-            room,
+            room: {
+              ...room,
+              players: room.players.map(sanitizePlayerForClient),
+            },
             gameState,
             message: "Game started! Let the fun begin!",
           });
@@ -260,6 +349,16 @@ io.on("connection", (socket) => {
     try {
       const { roomCode, cardId, placementChoice } = data;
       logger.log(`🎯 Vetrolisci pick card: ${socket.id} in room ${roomCode} picks card ${cardId}`);
+
+      const room = rooms.get(roomCode?.toUpperCase());
+      if (!room) {
+        callback({ success: false, error: "Room not found or expired" });
+        return;
+      }
+      if (isRoomPausedForReconnect(room)) {
+        callback({ success: false, error: "Game is paused while waiting for player reconnection" });
+        return;
+      }
 
       const result = vetrolisciServer.handleCardPick(roomCode, socket.id, cardId, placementChoice);
 
@@ -300,6 +399,16 @@ io.on("connection", (socket) => {
     try {
       const { roomCode, cardId, choice } = data;
       logger.log(`🎯 Vetrolisci placement choice: ${socket.id} in room ${roomCode}`);
+
+      const room = rooms.get(roomCode?.toUpperCase());
+      if (!room) {
+        callback({ success: false, error: "Room not found or expired" });
+        return;
+      }
+      if (isRoomPausedForReconnect(room)) {
+        callback({ success: false, error: "Game is paused while waiting for player reconnection" });
+        return;
+      }
 
       const result = vetrolisciServer.handlePlacementChoice(roomCode, socket.id, cardId, choice);
       const gameState = vetrolisciServer.getGameState(roomCode);
@@ -357,6 +466,16 @@ io.on("connection", (socket) => {
     try {
       const { roomCode } = data;
       logger.log(`🎯 Continue from scoring for room ${roomCode}`);
+
+      const room = rooms.get(roomCode?.toUpperCase());
+      if (!room) {
+        callback({ success: false, error: "Room not found or expired" });
+        return;
+      }
+      if (isRoomPausedForReconnect(room)) {
+        callback({ success: false, error: "Game is paused while waiting for player reconnection" });
+        return;
+      }
 
       const game = vetrolisciServer.getGame(roomCode);
       if (!game) {
@@ -428,29 +547,79 @@ io.on("connection", (socket) => {
     if (playerInfo) {
       const room = rooms.get(playerInfo.roomCode);
       if (room) {
-        // Remove player from room
-        room.players = room.players.filter((p) => p.id !== socket.id);
+        const disconnectedPlayerIndex = room.players.findIndex(
+          (player) => player.reconnectToken === playerInfo.reconnectToken,
+        );
 
-        // Notify other players
-        socket.to(playerInfo.roomCode).emit("player-left", {
-          playerId: socket.id,
-          playerName: playerInfo.name,
-          remainingPlayers: room.players.length,
-        });
+        if (disconnectedPlayerIndex !== -1 && room.status === "playing") {
+          const disconnectedPlayer = room.players[disconnectedPlayerIndex];
+          disconnectedPlayer.id = null;
+          disconnectedPlayer.disconnectedAt = Date.now();
 
-        // Clean up empty rooms or mark as abandoned
-        if (room.players.length === 0) {
-          logger.log(`🧹 Removing empty room: ${room.code}`);
-          rooms.delete(room.code);
-          vetrolisciServer.removeGame(room.code);
-        } else if (room.status === "playing") {
-          room.status = "waiting";
-          vetrolisciServer.removeGame(room.code);
-          io.to(room.code).emit("room-status-updated", {
-            status: room.status,
-            reason: "player_disconnected",
+          socket.to(playerInfo.roomCode).emit("player-disconnected", {
+            playerName: disconnectedPlayer.name,
+            playerIndex: disconnectedPlayerIndex,
+            gracePeriodMs: RECONNECT_GRACE_PERIOD_MS,
+            reconnectBy: disconnectedPlayer.disconnectedAt + RECONNECT_GRACE_PERIOD_MS,
+          });
+
+          clearReconnectGraceTimer(room.code, disconnectedPlayer.reconnectToken);
+          const timerKey = getReconnectTimerKey(room.code, disconnectedPlayer.reconnectToken);
+          const graceTimer = setTimeout(() => {
+            const activeRoom = rooms.get(room.code);
+            if (!activeRoom) return;
+
+            const timedOutPlayerIndex = activeRoom.players.findIndex(
+              (player) => player.reconnectToken === disconnectedPlayer.reconnectToken && player.disconnectedAt,
+            );
+
+            if (timedOutPlayerIndex === -1) return;
+
+            const [timedOutPlayer] = activeRoom.players.splice(timedOutPlayerIndex, 1);
+            reconnectGraceTimers.delete(timerKey);
+
+            io.to(activeRoom.code).emit("rejoin-grace-expired", {
+              playerName: timedOutPlayer.name,
+            });
+            io.to(activeRoom.code).emit("player-left", {
+              playerId: null,
+              playerName: timedOutPlayer.name,
+              remainingPlayers: activeRoom.players.length,
+            });
+
+            if (activeRoom.players.length === 0) {
+              logger.log(`🧹 Removing empty room after reconnect grace timeout: ${activeRoom.code}`);
+              rooms.delete(activeRoom.code);
+              clearRoomReconnectGraceTimers(activeRoom.code);
+              vetrolisciServer.removeGame(activeRoom.code);
+              return;
+            }
+
+            activeRoom.status = "waiting";
+            vetrolisciServer.removeGame(activeRoom.code);
+            io.to(activeRoom.code).emit("room-status-updated", {
+              status: activeRoom.status,
+              reason: "reconnect_timeout",
+              remainingPlayers: activeRoom.players.length,
+            });
+          }, RECONNECT_GRACE_PERIOD_MS);
+
+          reconnectGraceTimers.set(timerKey, graceTimer);
+        } else {
+          room.players = room.players.filter((player) => player.reconnectToken !== playerInfo.reconnectToken);
+
+          socket.to(playerInfo.roomCode).emit("player-left", {
+            playerId: socket.id,
+            playerName: playerInfo.name,
             remainingPlayers: room.players.length,
           });
+
+          if (room.players.length === 0) {
+            logger.log(`🧹 Removing empty room: ${room.code}`);
+            rooms.delete(room.code);
+            clearRoomReconnectGraceTimers(room.code);
+            vetrolisciServer.removeGame(room.code);
+          }
         }
       }
 
