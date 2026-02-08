@@ -118,14 +118,14 @@ npm run client
 # Build for production
 npm run build
 
-# Run tests
-npm test
+# Preview production build
+npm run preview
 
 # Lint code
 npm run lint
 
-# Type checking
-npm run typecheck
+# Basic pre-merge checks (lint + build)
+npm run premerge
 ```
 
 ## Enhanced UI Components

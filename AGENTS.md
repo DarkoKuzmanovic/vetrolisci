@@ -536,12 +536,12 @@ class AgentRateLimiter {
 
 ### Code Examples
 
-See the following files for implementation examples:
+This repository currently does not include a dedicated `src/agents/` implementation. For the closest practical reference points (server events + client Socket.IO integration), see:
 
-- **Agent Base**: `src/agents/base-agent.js`
-- **Heuristic Agent**: `src/agents/heuristic-agent.js`
-- **Agent Manager**: `src/server/agent-manager.js`
-- **Testing Suite**: `tests/agents/`
+- **Socket client wrapper**: `src/shared/utils/socket-client.js`
+- **Room + Socket.IO server**: `src/server/main.js`
+- **Game state + rules orchestration**: `src/server/vetrolisci-server.js`
+- **Core rules (draft/placement/scoring/validation)**: `src/core/`
 
 ## 🆘 Troubleshooting
 
@@ -555,25 +555,25 @@ See the following files for implementation examples:
 ### Debug Commands
 
 ```bash
-# List active agents
-npm run agents:list
+# Run the app (server + client)
+npm run dev
 
-# Start agent tournament
-npm run agents:tournament
+# Run server only
+npm run server
 
-# Monitor agent performance
-npm run agents:monitor
+# Run client only
+npm run client
 
-# Reset agent statistics
-npm run agents:reset-stats
+# Lint + basic pre-merge checks
+npm run lint
+npm run premerge
 ```
 
 ## 📚 Additional Resources
 
-- [Game Rules Documentation](vetrolisci-ruleset.md)
-- [Frontend Development Guide](frontend-guide.md)
-- [Backend API Documentation](../server/)
-- [Testing Guidelines](../tests/)
+- [Game Rules Documentation](docs/vetrolisci-ruleset.md)
+- [Frontend Development Guide](docs/frontend-guide.md)
+- [Server entrypoint and handlers](src/server/)
 
 ---
 

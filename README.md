@@ -42,6 +42,8 @@ npm run server    # Start Express + Socket.IO server only
 npm run client    # Start Vite dev server only
 npm run build     # Production build (client)
 npm run preview   # Preview production build
+npm run lint      # Lint
+npm run premerge  # Lint + build
 ```
 
 ## 🎮 How to Play
@@ -83,10 +85,8 @@ src/
 │   │   ├── GameGrid.jsx        # 3×3 grid for card placement
 │   │   ├── Card.jsx            # Individual card component with states
 │   │   ├── DraftPhase.jsx      # 4-card draft interface
-│   │   ├── ScoreBoard.jsx      # Live score tracking display
 │   │   ├── CardChoiceModal.jsx # Choose between duplicate cards
 │   │   ├── PlacementChoiceModal.jsx # Choose grid position
-│   │   ├── RoundCompleteModal.jsx   # Round end summary
 │   │   ├── TurnScoreModal.jsx  # Turn scoring details
 │   │   ├── ScoreboardModal.jsx # Detailed score view
 │   │   ├── ValidationStar.jsx  # Visual validation indicator
@@ -168,9 +168,12 @@ public/
 
 ## 📚 Documentation
 
-- **[Game Rules](vetrolisci-ruleset.md)** - Complete Vetrolisci rules and scoring details
-- **[Frontend Guide](frontend-guide.md)** - Detailed component documentation and UI architecture
-- **[UI Polish](ui-polish.md)** - Design system and component status
+- **[Game Rules](docs/vetrolisci-ruleset.md)** - Complete Vetrolisci rules and scoring details
+- **[Frontend Guide](docs/frontend-guide.md)** - Detailed component documentation and UI architecture
+- **[Code Review](docs/vetrolisci-review.md)** - Recent code review findings
+- **[Implementation Plan](docs/vetrolisci-review-implement.md)** - Action plan based on the code review
+- **[Rematch Plan](docs/rematch-implementation.md)** - Two-player rematch flow in the same room
+- **[UI Polish](plans/2026-02-08-ui-polish-complete.md)** - UI polish notes and status
 - **[Development Notes](CLAUDE.md)** - Technical implementation details and history
 
 ## 🎯 Development
