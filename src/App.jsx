@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import socketClient from "./shared/utils/socket-client.js";
+import logger from "./shared/utils/logger.js";
 import Button from "./shared/components/Button.jsx";
 import LoadingSpinner from "./shared/components/LoadingSpinner.jsx";
 import ToastStack from "./shared/components/Toast.jsx";
@@ -36,7 +37,7 @@ function App() {
     socketClient.onConnectionStatus(({ connected, reconnected }) => {
       setConnected(connected);
       if (reconnected) {
-        console.log("🔌 Reconnected to server");
+        logger.log("🔌 Reconnected to server");
         pushToast("Reconnected", "success");
       }
     });
@@ -46,11 +47,11 @@ function App() {
     });
 
     socketClient.onPlayerJoined((data) => {
-      console.log("👤 Player joined:", data);
+      logger.log("👤 Player joined:", data);
     });
 
     socketClient.on("game-started", (data) => {
-      console.log("🚀 Game started for room:", data.room.code);
+      logger.log("🚀 Game started for room:", data.room.code);
 
       let playerIndex = 0;
       if (data.room && data.room.players) {
@@ -60,7 +61,7 @@ function App() {
         }
       }
 
-      console.log(`🎯 Joined as Player ${playerIndex} (${data.room.players[playerIndex]?.name})`);
+      logger.log(`🎯 Joined as Player ${playerIndex} (${data.room.players[playerIndex]?.name})`);
 
       setGameData({
         roomCode: data.room.code,
@@ -70,8 +71,11 @@ function App() {
       setCurrentView("game");
     });
 
-    socketClient.on("vetrolisci-game-state", (data) => {
-      setGameData((prev) => (prev ? { ...prev, gameState: data } : prev));
+    socketClient.on("game-start-error", (data) => {
+      pushToast(data?.error || "Failed to start game", "error");
+      setCurrentView("menu");
+      setCurrentRoom(null);
+      setGameData(null);
     });
   }, [pushToast]);
 
@@ -85,7 +89,7 @@ function App() {
         setConnected(true);
         attachSocketListeners();
       } catch (err) {
-        console.error("Failed to connect to server:", err);
+        logger.error("Failed to connect to server:", err);
         pushToast("Connection failed", "error");
       } finally {
         if (showLoader) {
@@ -162,7 +166,7 @@ function App() {
         setCurrentRoom(response);
         setRoomCode(response.roomCode);
         setCurrentView("waiting");
-        console.log("🎮 Room created:", response.roomCode);
+        logger.log("🎮 Room created:", response.roomCode);
       } else {
         pushToast(response.error || "Room creation failed", "error");
       }
@@ -179,7 +183,7 @@ function App() {
   };
 
   const handleJoinRoom = async () => {
-    console.log("🎯 JOIN ATTEMPT: Starting join process for room:", roomCode);
+    logger.log("🎯 JOIN ATTEMPT: Starting join process for room:", roomCode);
 
     if (!connected) {
       pushToast("Not connected", "error");
@@ -194,10 +198,10 @@ function App() {
 
     try {
       setLoading(true);
-      console.log("🎯 JOIN ATTEMPT: Checking if room exists:", roomCode);
+      logger.log("🎯 JOIN ATTEMPT: Checking if room exists:", roomCode);
 
       const checkResponse = await socketClient.checkRoom(roomCode);
-      console.log("🎯 JOIN ATTEMPT: Check room response:", checkResponse);
+      logger.log("🎯 JOIN ATTEMPT: Check room response:", checkResponse);
 
       if (!checkResponse.success) {
         triggerInputError();
@@ -206,21 +210,21 @@ function App() {
         return;
       }
 
-      console.log("🎯 JOIN ATTEMPT: Room exists, attempting to join...");
+      logger.log("🎯 JOIN ATTEMPT: Room exists, attempting to join...");
       const finalPlayerName = playerName.trim() || "Guest";
       const joinResponse = await socketClient.joinRoom(roomCode, finalPlayerName);
-      console.log("🎯 JOIN ATTEMPT: Join response:", joinResponse);
+      logger.log("🎯 JOIN ATTEMPT: Join response:", joinResponse);
 
       if (joinResponse.success) {
         setCurrentRoom(joinResponse);
         setCurrentView("waiting");
-        console.log("👤 Successfully joined room:", roomCode);
+        logger.log("👤 Successfully joined room:", roomCode);
       } else {
         triggerInputError();
         pushToast(joinResponse.error || "Join failed", "error");
       }
     } catch (err) {
-      console.log("🎯 JOIN ATTEMPT: Exception:", err);
+      logger.error("🎯 JOIN ATTEMPT: Exception:", err);
       pushToast("Join failed", "error");
     } finally {
       setLoading(false);
@@ -229,7 +233,7 @@ function App() {
 
   const copyRoomCode = () => {
     navigator.clipboard.writeText(roomCode);
-    console.log("📋 Room code copied to clipboard");
+    logger.log("📋 Room code copied to clipboard");
     pushToast("Copied!", "success");
   };
 
@@ -393,7 +397,6 @@ function App() {
             roomCode={gameData.roomCode}
             playerIndex={gameData.playerIndex}
             onBackToMenu={handleBack}
-            showHeader={true}
             onGameStateUpdate={(gameState) => {
               setGameData((prev) => ({ ...prev, gameState }));
             }}

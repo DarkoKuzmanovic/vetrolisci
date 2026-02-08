@@ -31,6 +31,7 @@ export class VetrolisciServer {
       turn: 0,
       playerTurnCounts: [0, 0], // Track turns per player
       lastPicker: null, // Track who picked the last card for dynamic pick order
+      finalScores: null,
       status: "playing",
       createdAt: Date.now(),
     };
@@ -358,10 +359,11 @@ export class VetrolisciServer {
 
   advanceFromScoring(game) {
     logger.log(`🎯 Advancing from scoring phase after round ${game.currentRound}`);
+    let finalResult = null;
 
     // Check if game is complete (3 rounds)
     if (game.currentRound >= 3) {
-      this.endGame(game, game.roundScores);
+      finalResult = this.endGame(game, game.roundScores);
     } else {
       // Prepare next round
       game.currentRound++;
@@ -389,6 +391,14 @@ export class VetrolisciServer {
       // Start first turn of new round
       this.startNewTurn(game);
     }
+
+    // Clear scoring acknowledgments once transition is complete
+    game.scoringAcknowledgments = null;
+
+    return {
+      gameComplete: game.phase === "finished",
+      finalResult,
+    };
   }
 
   endGame(game, finalRoundScores) {
@@ -420,6 +430,8 @@ export class VetrolisciServer {
 
     const winner = finalScores.find((p) => p.winner);
     logger.log(`🏆 Winner: ${winner.playerName} with ${winner.totalScore} points!`);
+
+    game.finalScores = finalScores;
 
     return { finalScores, winner };
   }
@@ -459,6 +471,7 @@ export class VetrolisciServer {
       currentPickingPlayer: this.getCurrentPickingPlayer(roomCode),
       status: game.status,
       roundScores: game.roundScores || null,
+      finalScores: game.finalScores || null,
     };
   }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Utility imports
@@ -6,11 +6,8 @@ import logger from "../../shared/utils/logger.js";
 
 // Component imports
 import GameGrid from "./GameGrid.jsx";
-import Card from "./Card.jsx";
 import CardChoiceModal from "./CardChoiceModal.jsx";
 import PlacementChoiceModal from "./PlacementChoiceModal.jsx";
-import RoundCompleteModal from "./RoundCompleteModal.jsx";
-import ScoreBoard from "./ScoreBoard.jsx";
 import TurnScoreModal from "./TurnScoreModal.jsx";
 import ScoreboardModal from "./ScoreboardModal.jsx";
 import DraftPhase from "./DraftPhase.jsx";
@@ -22,7 +19,7 @@ import socketClient from "../../shared/utils/socket-client.js";
 import audioService from "../services/audio.js";
 import "./GameBoard.css";
 
-const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onGameStateUpdate }) => {
+const GameBoard = ({ roomCode, playerIndex, onBackToMenu, onGameStateUpdate }) => {
   // ==================== STATE MANAGEMENT ====================
 
   // Core game state
@@ -35,8 +32,6 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
   const [cardChoiceData, setCardChoiceData] = useState(null);
   const [showPlacementChoice, setShowPlacementChoice] = useState(false);
   const [placementChoiceData, setPlacementChoiceData] = useState(null);
-  const [showRoundComplete, setShowRoundComplete] = useState(false);
-  const [roundCompleteData, setRoundCompleteData] = useState(null);
   const [showTurnScore, setShowTurnScore] = useState(false);
   const [showScoreboard, setShowScoreboard] = useState(false);
 
@@ -49,6 +44,9 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
   // Audio states
   const [soundEnabled, setSoundEnabled] = useState(audioService.isSoundEffectsEnabled());
   const [musicEnabled, setMusicEnabled] = useState(audioService.isMusicEnabled());
+  const pendingTimeoutsRef = useRef(new Set());
+  const renderCountRef = useRef(0);
+  const cardPickStartRef = useRef(new Map());
 
   // ==================== HELPER FUNCTIONS ====================
 
@@ -56,6 +54,16 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
     setGameState(newGameState);
     onGameStateUpdate?.(newGameState);
   };
+
+  const scheduleTimeout = useCallback((fn, delayMs) => {
+    const timeoutId = setTimeout(() => {
+      pendingTimeoutsRef.current.delete(timeoutId);
+      fn();
+    }, delayMs);
+
+    pendingTimeoutsRef.current.add(timeoutId);
+    return timeoutId;
+  }, []);
 
   const toggleSound = () => {
     const newState = audioService.toggleSoundEffects();
@@ -82,6 +90,26 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
     audioService.startBackgroundMusic();
     return () => audioService.stopBackgroundMusic();
   }, []);
+
+  // Clear pending timers on unmount
+  useEffect(() => {
+    return () => {
+      pendingTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
+      pendingTimeoutsRef.current.clear();
+    };
+  }, []);
+
+  // Dev-only checkpoint to track rerender frequency while tuning UI performance
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+
+    renderCountRef.current += 1;
+    logger.debug("[perf] GameBoard render", {
+      count: renderCountRef.current,
+      phase: gameState?.phase ?? null,
+      round: gameState?.currentRound ?? null,
+    });
+  });
 
   // Update page title based on game state
   useEffect(() => {
@@ -167,7 +195,7 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
         }
 
         // Clear animations after delays
-        setTimeout(() => {
+        scheduleTimeout(() => {
           setNewlyPlacedCards((prev) => {
             const newSet = new Set(prev);
             newSet.delete(data.cardId);
@@ -175,49 +203,81 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
           });
         }, 500);
 
-        setTimeout(() => {
+        scheduleTimeout(() => {
           setGlowingCards((prev) => {
             const newSet = new Set(prev);
             newSet.delete(data.cardId);
             return newSet;
           });
         }, 3000);
+
+        if (import.meta.env.DEV && cardPickStartRef.current.has(data.cardId)) {
+          const startedAt = cardPickStartRef.current.get(data.cardId);
+          cardPickStartRef.current.delete(data.cardId);
+          logger.debug("[perf] Card pick latency", {
+            cardId: data.cardId,
+            latencyMs: Number((performance.now() - startedAt).toFixed(2)),
+          });
+        }
       }
     };
 
     const handleRoundComplete = (data) => {
       logger.log("🏆 Round complete:", data);
       audioService.playSound("validate");
-      setRoundCompleteData({
-        roundNumber: data.roundNumber,
-        roundScores: data.roundScores,
-        nextRound: data.nextRound,
-        gameState: data.gameState,
-      });
-      setShowRoundComplete(true);
+      updateGameState(data.gameState);
     };
 
     const handleGameComplete = (data) => {
       logger.log("🎉 Game complete:", data);
+
+      const getTotalScore = (index) => {
+        const playerTotals = data?.gameState?.finalScores?.find((score) => score.playerIndex === index)?.totalScore;
+        if (typeof playerTotals === "number") {
+          return playerTotals;
+        }
+
+        const player = data?.gameState?.players?.[index];
+        if (!player || !Array.isArray(player.scores)) {
+          return 0;
+        }
+
+        return player.scores.reduce((sum, score) => sum + score, 0);
+      };
+
       // Play appropriate sound based on win/loss
-      const currentPlayerScore = data.gameState.players[playerIndex].totalScore;
-      const opponentScore = data.gameState.players[playerIndex === 0 ? 1 : 0].totalScore;
+      const currentPlayerScore = getTotalScore(playerIndex);
+      const opponentScore = getTotalScore(playerIndex === 0 ? 1 : 0);
       audioService.playSound(currentPlayerScore > opponentScore ? "win" : "lose");
       updateGameState(data.gameState);
+    };
+
+    const handleGameState = (nextGameState) => {
+      updateGameState(nextGameState);
+    };
+
+    const handleRoomStatusUpdated = (data) => {
+      if (data?.reason === "player_disconnected") {
+        setError("Opponent disconnected. Waiting for a new player.");
+      }
     };
 
     // Register event listeners
     socketClient.on("vetrolisci-card-placed", handleCardPlaced);
     socketClient.on("vetrolisci-round-complete", handleRoundComplete);
     socketClient.on("vetrolisci-game-complete", handleGameComplete);
+    socketClient.on("vetrolisci-game-state", handleGameState);
+    socketClient.on("room-status-updated", handleRoomStatusUpdated);
 
     // Cleanup
     return () => {
       socketClient.off("vetrolisci-card-placed", handleCardPlaced);
       socketClient.off("vetrolisci-round-complete", handleRoundComplete);
       socketClient.off("vetrolisci-game-complete", handleGameComplete);
+      socketClient.off("vetrolisci-game-state", handleGameState);
+      socketClient.off("room-status-updated", handleRoomStatusUpdated);
     };
-  }, [roomCode, playerIndex]);
+  }, [roomCode, playerIndex, scheduleTimeout]);
 
   // ==================== EVENT HANDLERS ====================
 
@@ -232,7 +292,7 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
     if (!currentPickingPlayer || currentPickingPlayer.index !== playerIndex) {
       logger.log("⚠️ Not your turn to pick - current player:", currentPickingPlayer?.index, "you are:", playerIndex);
       setError("Not your turn to pick!");
-      setTimeout(() => setError(""), 3000);
+      scheduleTimeout(() => setError(""), 3000);
       return;
     }
 
@@ -245,7 +305,7 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
           ? "All cards would violate validation rule - can place face-down"
           : "You already have a validated card with this number";
       setError(message);
-      setTimeout(() => setError(""), 3000);
+      scheduleTimeout(() => setError(""), 3000);
       return;
     }
 
@@ -257,6 +317,9 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
 
     try {
       setAnimatingCards((prev) => new Set([...prev, cardId]));
+      if (import.meta.env.DEV) {
+        cardPickStartRef.current.set(cardId, performance.now());
+      }
 
       const response = await socketClient.emit("vetrolisci-pick-card", {
         roomCode,
@@ -308,6 +371,9 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
         newSet.delete(cardId);
         return newSet;
       });
+      if (import.meta.env.DEV && cardPickStartRef.current.has(cardId)) {
+        cardPickStartRef.current.delete(cardId);
+      }
     }
   };
 
@@ -359,20 +425,24 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
     setPlacementChoiceData(null);
   };
 
-  const handleRoundContinue = () => {
-    setShowRoundComplete(false);
-
-    // Update game state with new round data
-    if (roundCompleteData?.gameState) {
-      setGameState(roundCompleteData.gameState);
-    }
-
-    setRoundCompleteData(null);
-  };
-
-  const handleTurnScoreContinue = () => {
+  const handleTurnScoreContinue = async () => {
     setShowTurnScore(false);
-    socketClient.emit("continue-from-scoring", { roomCode });
+    try {
+      const response = await socketClient.emit("continue-from-scoring", { roomCode });
+      if (!response?.success) {
+        setError(response?.error || "Failed to continue");
+        setShowTurnScore(true);
+        return;
+      }
+
+      if (response.waitingForOtherPlayer) {
+        setError("Waiting for opponent...");
+        scheduleTimeout(() => setError(""), 2000);
+      }
+    } catch (err) {
+      setError("Failed to continue");
+      setShowTurnScore(true);
+    }
   };
 
   // ==================== DERIVED STATE (must stay before returns) ====================
@@ -668,14 +738,6 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, showHeader = true, onG
         availablePositions={placementChoiceData?.availablePositions || []}
         onChoose={handlePlacementChoice}
         onCancel={() => setShowPlacementChoice(false)}
-      />
-
-      <RoundCompleteModal
-        isOpen={showRoundComplete}
-        roundNumber={roundCompleteData?.roundNumber}
-        roundScores={roundCompleteData?.roundScores}
-        nextRound={roundCompleteData?.nextRound}
-        onContinue={handleRoundContinue}
       />
 
       <TurnScoreModal

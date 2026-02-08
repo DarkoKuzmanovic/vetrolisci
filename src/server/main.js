@@ -67,6 +67,24 @@ io.on("connection", (socket) => {
     timestamp: new Date().toISOString(),
   });
 
+  const emitRoundProgressEvents = (roomCode, result, gameState) => {
+    if (result.roundComplete && result.roundScores) {
+      io.to(roomCode).emit("vetrolisci-round-complete", {
+        roundNumber: gameState.currentRound,
+        roundScores: result.roundScores,
+        nextRound: result.gameComplete ? null : gameState.currentRound + 1,
+        gameState,
+      });
+      return;
+    }
+
+    if (gameState.phase === "finished") {
+      io.to(roomCode).emit("vetrolisci-game-complete", {
+        gameState,
+      });
+    }
+  };
+
   // Create room
   socket.on("create-room", (data, callback) => {
     try {
@@ -209,23 +227,27 @@ io.on("connection", (socket) => {
 
       // Start game if room is full
       if (room.players.length === 2) {
-        room.status = "playing";
-
         // Create the actual game based on game type
         let gameState = null;
         try {
           gameState = vetrolisciServer.createGame(room.code, room.players);
+          room.status = "playing";
           logger.log(`🎮 Vetrolisci game created for room ${room.code}`);
+
+          io.to(room.code).emit("game-started", {
+            room,
+            gameState,
+            message: "Game started! Let the fun begin!",
+          });
+          logger.log(`🚀 Game started in room ${room.code} (${room.gameType})`);
         } catch (error) {
           console.error(`❌ Error creating Vetrolisci game: ${error.message}`);
+          room.status = "waiting";
+          vetrolisciServer.removeGame(room.code);
+          io.to(room.code).emit("game-start-error", {
+            error: "Failed to start game. Please try creating a new room.",
+          });
         }
-
-        io.to(room.code).emit("game-started", {
-          room,
-          gameState,
-          message: "Game started! Let the fun begin!",
-        });
-        logger.log(`🚀 Game started in room ${room.code} (${room.gameType})`);
       }
     } catch (error) {
       console.error("❌ Error joining room:", error);
@@ -260,21 +282,7 @@ io.on("connection", (socket) => {
           placementResult: result.placementResult,
         });
 
-        // Check if round/game is complete using the result data
-        if (result.roundComplete && result.roundScores) {
-          // Round complete - use data from the vetrolisci server
-          io.to(roomCode).emit("vetrolisci-round-complete", {
-            roundNumber: gameState.currentRound - 1, // Round that just completed
-            roundScores: result.roundScores,
-            nextRound: result.gameComplete ? null : gameState.currentRound,
-            gameState,
-          });
-        } else if (gameState.phase === "finished") {
-          // Game complete
-          io.to(roomCode).emit("vetrolisci-game-complete", {
-            gameState,
-          });
-        }
+        emitRoundProgressEvents(roomCode, result, gameState);
 
         callback({
           success: true,
@@ -304,21 +312,7 @@ io.on("connection", (socket) => {
         placementResult: result.placementResult,
       });
 
-      // Check if round/game is complete using the result data
-      if (result.roundComplete && result.roundScores) {
-        // Round complete - use data from the vetrolisci server
-        io.to(roomCode).emit("vetrolisci-round-complete", {
-          roundNumber: gameState.currentRound - 1, // Round that just completed
-          roundScores: result.roundScores,
-          nextRound: result.gameComplete ? null : gameState.currentRound,
-          gameState,
-        });
-      } else if (gameState.phase === "finished") {
-        // Game complete
-        io.to(roomCode).emit("vetrolisci-game-complete", {
-          gameState,
-        });
-      }
+      emitRoundProgressEvents(roomCode, result, gameState);
 
       callback({
         success: true,
@@ -359,7 +353,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("continue-from-scoring", (data) => {
+  socket.on("continue-from-scoring", (data, callback = () => {}) => {
     try {
       const { roomCode } = data;
       logger.log(`🎯 Continue from scoring for room ${roomCode}`);
@@ -367,27 +361,62 @@ io.on("connection", (socket) => {
       const game = vetrolisciServer.getGame(roomCode);
       if (!game) {
         console.error(`❌ Game not found: ${roomCode}`);
+        callback({ success: false, error: "Game not found" });
         return;
       }
 
-      // Transition from scoring phase to next turn/round
-      if (game.phase === "scoring") {
-        if (game.currentRound >= 3) {
-          // Game should be finished
-          game.phase = "finished";
-        } else {
-          // Continue to next turn of current round or start new round
-          game.phase = "draft";
-        }
-
-        // Emit updated game state to all players in the room
-        const gameState = vetrolisciServer.getGameState(roomCode);
-        io.to(roomCode).emit("vetrolisci-game-updated", gameState);
-
-        logger.log(`🎯 Transitioned from scoring to ${game.phase} phase`);
+      if (game.phase !== "scoring") {
+        callback({ success: false, error: "Game is not in scoring phase" });
+        return;
       }
+
+      const currentPlayerInGame = game.players.some((player) => player.id === socket.id);
+      if (!currentPlayerInGame) {
+        callback({ success: false, error: "Player is not part of this game" });
+        return;
+      }
+
+      if (!(game.scoringAcknowledgments instanceof Set)) {
+        game.scoringAcknowledgments = new Set();
+      }
+
+      game.scoringAcknowledgments.add(socket.id);
+      const requiredAcknowledgments = game.players.length;
+
+      if (game.scoringAcknowledgments.size < requiredAcknowledgments) {
+        io.to(roomCode).emit("vetrolisci-scoring-progress", {
+          acknowledged: game.scoringAcknowledgments.size,
+          required: requiredAcknowledgments,
+        });
+        callback({
+          success: true,
+          waitingForOtherPlayer: true,
+          acknowledged: game.scoringAcknowledgments.size,
+          required: requiredAcknowledgments,
+        });
+        return;
+      }
+
+      const advanceResult = vetrolisciServer.advanceFromScoring(game);
+      const gameState = vetrolisciServer.getGameState(roomCode);
+
+      io.to(roomCode).emit("vetrolisci-game-state", gameState);
+
+      if (advanceResult.gameComplete) {
+        io.to(roomCode).emit("vetrolisci-game-complete", {
+          gameState,
+        });
+      }
+
+      logger.log(`🎯 Transitioned from scoring to ${game.phase} phase`);
+      callback({
+        success: true,
+        waitingForOtherPlayer: false,
+        gameComplete: advanceResult.gameComplete,
+      });
     } catch (error) {
       console.error(`❌ Continue from scoring error: ${error.message}`);
+      callback({ success: false, error: error.message });
     }
   });
 
@@ -413,6 +442,15 @@ io.on("connection", (socket) => {
         if (room.players.length === 0) {
           logger.log(`🧹 Removing empty room: ${room.code}`);
           rooms.delete(room.code);
+          vetrolisciServer.removeGame(room.code);
+        } else if (room.status === "playing") {
+          room.status = "waiting";
+          vetrolisciServer.removeGame(room.code);
+          io.to(room.code).emit("room-status-updated", {
+            status: room.status,
+            reason: "player_disconnected",
+            remainingPlayers: room.players.length,
+          });
         }
       }
 
@@ -424,7 +462,5 @@ io.on("connection", (socket) => {
 server.listen(PORT, "0.0.0.0", () => {
   logger.log(`🚀 Vetrolisci server running on port ${PORT}`);
   logger.log(`📡 Socket.IO ready for connections`);
-  logger.log(`🌐 Server accessible at:`);
-  logger.log(`   - Local: http://localhost:${PORT}`);
-  logger.log(`   - Network: http://192.168.0.105:${PORT}`);
+  logger.log(`🌐 Server endpoint: http://localhost:${PORT}`);
 });
