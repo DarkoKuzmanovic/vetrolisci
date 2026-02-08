@@ -137,12 +137,12 @@ class SocketClient {
   }
 
   // Room management methods
-  async createRoom(playerName = "Host") {
-    return this.emit("create-room", { playerName });
+  async createRoom(playerName = "Host", reconnectToken = null) {
+    return this.emit("create-room", { playerName, reconnectToken });
   }
 
-  async joinRoom(roomCode, playerName = "Guest") {
-    return this.emit("join-room", { roomCode, playerName });
+  async joinRoom(roomCode, playerName = "Guest", reconnectToken = null) {
+    return this.emit("join-room", { roomCode, playerName, reconnectToken });
   }
 
   async checkRoom(roomCode) {

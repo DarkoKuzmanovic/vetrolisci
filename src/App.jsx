@@ -7,6 +7,25 @@ import ToastStack from "./shared/components/Toast.jsx";
 import VetrolisciGameBoard from "./client/components/GameBoard.jsx";
 import "./App.css";
 
+const RECONNECT_TOKEN_STORAGE_KEY = "vetrolisci_reconnect_token";
+
+function getOrCreateReconnectToken() {
+  if (typeof window === "undefined") {
+    return "server-session";
+  }
+
+  const existingToken = window.localStorage.getItem(RECONNECT_TOKEN_STORAGE_KEY);
+  if (existingToken) {
+    return existingToken;
+  }
+
+  const newToken = window.crypto?.randomUUID
+    ? window.crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  window.localStorage.setItem(RECONNECT_TOKEN_STORAGE_KEY, newToken);
+  return newToken;
+}
+
 function App() {
   const [currentView, setCurrentView] = useState("menu"); // 'menu', 'join', 'waiting', 'game'
   const [roomCode, setRoomCode] = useState("");
@@ -18,8 +37,10 @@ function App() {
   const [gameData, setGameData] = useState(null);
   const [reconnecting, setReconnecting] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [reconnectToken] = useState(() => getOrCreateReconnectToken());
   const lastConnectionState = useRef(false);
   const initialConnectionCheck = useRef(true);
+  const reconnectAttemptInFlight = useRef(false);
 
   const pushToast = useCallback((message, type = "info", subtext = "") => {
     const id = `${Date.now()}-${Math.random()}`;
@@ -33,12 +54,49 @@ function App() {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
+  const attemptAutoRejoin = useCallback(async () => {
+    if (reconnectAttemptInFlight.current) return;
+    if (!(currentView === "waiting" || currentView === "game")) return;
+
+    const activeRoomCode = gameData?.roomCode || currentRoom?.room?.code || roomCode;
+    if (!activeRoomCode) return;
+
+    reconnectAttemptInFlight.current = true;
+    try {
+      const fallbackName = playerName.trim() || "Player";
+      const response = await socketClient.joinRoom(activeRoomCode, fallbackName, reconnectToken);
+
+      if (!response?.success) {
+        pushToast(response?.error || "Could not rejoin room", "error");
+        return;
+      }
+
+      if (response.rejoined && response.gameState) {
+        setCurrentRoom(response);
+        setRoomCode(response.room.code);
+        setGameData({
+          roomCode: response.room.code,
+          playerIndex: response.room.playerIndex,
+          gameState: response.gameState,
+        });
+        setCurrentView("game");
+        pushToast("Rejoined game", "success");
+      }
+    } catch (error) {
+      logger.error("Auto rejoin failed:", error);
+      pushToast("Auto rejoin failed", "error");
+    } finally {
+      reconnectAttemptInFlight.current = false;
+    }
+  }, [currentView, gameData?.roomCode, currentRoom?.room?.code, roomCode, playerName, reconnectToken, pushToast]);
+
   const attachSocketListeners = useCallback(() => {
     socketClient.onConnectionStatus(({ connected, reconnected }) => {
       setConnected(connected);
       if (reconnected) {
         logger.log("🔌 Reconnected to server");
         pushToast("Reconnected", "success");
+        attemptAutoRejoin();
       }
     });
 
@@ -77,7 +135,7 @@ function App() {
       setCurrentRoom(null);
       setGameData(null);
     });
-  }, [pushToast]);
+  }, [pushToast, attemptAutoRejoin]);
 
   const initializeSocketConnection = useCallback(
     async ({ showLoader = false } = {}) => {
@@ -132,6 +190,7 @@ function App() {
     await initializeSocketConnection();
     if (socketClient.isConnected()) {
       pushToast("Reconnected", "success");
+      await attemptAutoRejoin();
     }
     setReconnecting(false);
   };
@@ -158,9 +217,7 @@ function App() {
 
     try {
       setLoading(true);
-      const response = await socketClient.emit("create-room", {
-        playerName: finalPlayerName,
-      });
+      const response = await socketClient.createRoom(finalPlayerName, reconnectToken);
 
       if (response.success) {
         setCurrentRoom(response);
@@ -212,13 +269,26 @@ function App() {
 
       logger.log("🎯 JOIN ATTEMPT: Room exists, attempting to join...");
       const finalPlayerName = playerName.trim() || "Guest";
-      const joinResponse = await socketClient.joinRoom(roomCode, finalPlayerName);
+      const joinResponse = await socketClient.joinRoom(roomCode, finalPlayerName, reconnectToken);
       logger.log("🎯 JOIN ATTEMPT: Join response:", joinResponse);
 
       if (joinResponse.success) {
         setCurrentRoom(joinResponse);
-        setCurrentView("waiting");
-        logger.log("👤 Successfully joined room:", roomCode);
+        setRoomCode(joinResponse.room.code);
+
+        if (joinResponse.rejoined && joinResponse.gameState) {
+          setGameData({
+            roomCode: joinResponse.room.code,
+            playerIndex: joinResponse.room.playerIndex,
+            gameState: joinResponse.gameState,
+          });
+          setCurrentView("game");
+          pushToast("Rejoined game", "success");
+        } else {
+          setCurrentView("waiting");
+        }
+
+        logger.log("👤 Successfully joined room:", joinResponse.room.code);
       } else {
         triggerInputError();
         pushToast(joinResponse.error || "Join failed", "error");

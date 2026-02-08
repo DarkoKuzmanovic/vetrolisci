@@ -257,9 +257,18 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, onGameStateUpdate }) =
     };
 
     const handleRoomStatusUpdated = (data) => {
-      if (data?.reason === "player_disconnected") {
-        setError("Opponent disconnected. Waiting for a new player.");
+      if (data?.reason === "reconnect_timeout") {
+        setError("Opponent did not reconnect in time. Waiting for a new player.");
       }
+    };
+
+    const handlePlayerDisconnected = (data) => {
+      const gracePeriodSeconds = Math.ceil((data?.gracePeriodMs || 0) / 1000);
+      setError(`Opponent disconnected. Waiting up to ${gracePeriodSeconds}s for rejoin.`);
+    };
+
+    const handlePlayerRejoined = () => {
+      setError("");
     };
 
     // Register event listeners
@@ -268,6 +277,8 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, onGameStateUpdate }) =
     socketClient.on("vetrolisci-game-complete", handleGameComplete);
     socketClient.on("vetrolisci-game-state", handleGameState);
     socketClient.on("room-status-updated", handleRoomStatusUpdated);
+    socketClient.on("player-disconnected", handlePlayerDisconnected);
+    socketClient.on("player-rejoined", handlePlayerRejoined);
 
     // Cleanup
     return () => {
@@ -276,6 +287,8 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, onGameStateUpdate }) =
       socketClient.off("vetrolisci-game-complete", handleGameComplete);
       socketClient.off("vetrolisci-game-state", handleGameState);
       socketClient.off("room-status-updated", handleRoomStatusUpdated);
+      socketClient.off("player-disconnected", handlePlayerDisconnected);
+      socketClient.off("player-rejoined", handlePlayerRejoined);
     };
   }, [roomCode, playerIndex, scheduleTimeout]);
 
@@ -359,11 +372,11 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, onGameStateUpdate }) =
           updateGameState(response.gameState);
         }
       } else {
-        console.error("Failed to pick card:", response.error);
+        logger.error("Failed to pick card:", response.error);
         setError(response.error);
       }
     } catch (err) {
-      console.error("Error picking card:", err);
+      logger.error("Error picking card:", err);
       setError("Failed to pick card");
     } finally {
       setAnimatingCards((prev) => {
