@@ -247,8 +247,8 @@
 ## Game Improvement Suggestions
 
 1. [x] Add a real reconnect/rejoin UX with grace period.
-   Reason: multiplayer sessions should survive brief network drops without forcing a full restart.
-   Status: Implemented with reconnect tokens, auto-rejoin flow, and configurable grace window (`VETROLISCI_RECONNECT_GRACE_MS`, default 60000ms).
+       Reason: multiplayer sessions should survive brief network drops without forcing a full restart.
+       Status: Implemented with reconnect tokens, auto-rejoin flow, and configurable grace window (`VETROLISCI_RECONNECT_GRACE_MS`, default 60000ms).
 
 2. Add turn timer with optional “casual mode” (no timer) and “ranked mode” (strict timer).
    Reason: reduces stalling and creates distinct play styles.

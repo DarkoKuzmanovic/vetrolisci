@@ -19,7 +19,7 @@ import socketClient from "../../shared/utils/socket-client.js";
 import audioService from "../services/audio.js";
 import "./GameBoard.css";
 
-const GameBoard = ({ roomCode, playerIndex, onBackToMenu, onGameStateUpdate }) => {
+const GameBoard = ({ roomCode, playerIndex, onBackToMenu, onGameStateUpdate, onRematchStarted, onRematchError }) => {
   // ==================== STATE MANAGEMENT ====================
 
   // Core game state
@@ -34,6 +34,9 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, onGameStateUpdate }) =
   const [placementChoiceData, setPlacementChoiceData] = useState(null);
   const [showTurnScore, setShowTurnScore] = useState(false);
   const [showScoreboard, setShowScoreboard] = useState(false);
+  const [rematchRequested, setRematchRequested] = useState(false);
+  const [rematchProgress, setRematchProgress] = useState(null);
+  const [rematchError, setRematchError] = useState("");
 
   // Animation states
   const [animatingCards, setAnimatingCards] = useState(new Set());
@@ -137,6 +140,13 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, onGameStateUpdate }) =
       setShowTurnScore(true);
     }
   }, [gameState?.phase, showTurnScore]);
+
+  useEffect(() => {
+    if (gameState?.phase === "finished") return;
+    setRematchRequested(false);
+    setRematchProgress(null);
+    setRematchError("");
+  }, [gameState?.phase]);
 
   // Log turn changes for debugging
   useEffect(() => {
@@ -271,11 +281,42 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, onGameStateUpdate }) =
       setError("");
     };
 
+    const handleRematchProgress = (data) => {
+      const progress = {
+        accepted: Number(data?.accepted || 0),
+        required: Number(data?.required || 0),
+        acceptedPlayerIndexes: Array.isArray(data?.acceptedPlayerIndexes) ? data.acceptedPlayerIndexes : [],
+      };
+      setRematchProgress(progress);
+      setRematchRequested((prev) => prev || progress.acceptedPlayerIndexes.includes(playerIndex));
+      setRematchError("");
+    };
+
+    const handleRematchStarted = (data) => {
+      setRematchRequested(false);
+      setRematchProgress(null);
+      setRematchError("");
+      onRematchStarted?.();
+      if (data?.gameState) {
+        updateGameState(data.gameState);
+      }
+    };
+
+    const handleRematchError = (data) => {
+      setRematchRequested(false);
+      const message = data?.error || "Failed to start rematch";
+      setRematchError(message);
+      onRematchError?.(message);
+    };
+
     // Register event listeners
     socketClient.on("vetrolisci-card-placed", handleCardPlaced);
     socketClient.on("vetrolisci-round-complete", handleRoundComplete);
     socketClient.on("vetrolisci-game-complete", handleGameComplete);
     socketClient.on("vetrolisci-game-state", handleGameState);
+    socketClient.on("vetrolisci-rematch-progress", handleRematchProgress);
+    socketClient.on("vetrolisci-rematch-started", handleRematchStarted);
+    socketClient.on("vetrolisci-rematch-error", handleRematchError);
     socketClient.on("room-status-updated", handleRoomStatusUpdated);
     socketClient.on("player-disconnected", handlePlayerDisconnected);
     socketClient.on("player-rejoined", handlePlayerRejoined);
@@ -286,11 +327,14 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, onGameStateUpdate }) =
       socketClient.off("vetrolisci-round-complete", handleRoundComplete);
       socketClient.off("vetrolisci-game-complete", handleGameComplete);
       socketClient.off("vetrolisci-game-state", handleGameState);
+      socketClient.off("vetrolisci-rematch-progress", handleRematchProgress);
+      socketClient.off("vetrolisci-rematch-started", handleRematchStarted);
+      socketClient.off("vetrolisci-rematch-error", handleRematchError);
       socketClient.off("room-status-updated", handleRoomStatusUpdated);
       socketClient.off("player-disconnected", handlePlayerDisconnected);
       socketClient.off("player-rejoined", handlePlayerRejoined);
     };
-  }, [roomCode, playerIndex, scheduleTimeout]);
+  }, [roomCode, playerIndex, scheduleTimeout, onRematchStarted, onRematchError]);
 
   // ==================== EVENT HANDLERS ====================
 
@@ -458,6 +502,36 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, onGameStateUpdate }) =
     }
   };
 
+  const handleRequestRematch = async () => {
+    if (rematchRequested) return;
+
+    setRematchError("");
+    setRematchRequested(true);
+
+    try {
+      const response = await socketClient.emit("vetrolisci-request-rematch", { roomCode });
+      if (!response?.success) {
+        setRematchRequested(false);
+        setRematchError(response?.error || "Failed to request rematch");
+        return;
+      }
+
+      if (response?.gameState) {
+        updateGameState(response.gameState);
+        return;
+      }
+
+      setRematchProgress({
+        accepted: Number(response?.accepted || 0),
+        required: Number(response?.required || 0),
+        acceptedPlayerIndexes: Array.isArray(response?.acceptedPlayerIndexes) ? response.acceptedPlayerIndexes : [],
+      });
+    } catch (err) {
+      setRematchRequested(false);
+      setRematchError("Failed to request rematch");
+    }
+  };
+
   // ==================== DERIVED STATE (must stay before returns) ====================
   const currentPlayer = gameState?.players?.[playerIndex];
   const opponentIndex = playerIndex === 0 ? 1 : 0;
@@ -525,6 +599,14 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, onGameStateUpdate }) =
       resultText = "🏆 You Win!";
     }
 
+    const acceptedVotes = rematchProgress?.accepted ?? (rematchRequested ? 1 : 0);
+    const requiredVotes = rematchProgress?.required ?? 2;
+    const rematchMessage = rematchRequested
+      ? `Waiting for opponent... (${acceptedVotes}/${requiredVotes})`
+      : acceptedVotes > 0
+        ? `Opponent requested a rematch (${acceptedVotes}/${requiredVotes})`
+        : "Play another match in this room.";
+
     return (
       <div className="game-board">
         <div className="game-complete">
@@ -541,9 +623,24 @@ const GameBoard = ({ roomCode, playerIndex, onBackToMenu, onGameStateUpdate }) =
               <div className="player-final-score">{opponent.totalScore}</div>
             </div>
           </div>
-          <Button variant="primary" size="large" onClick={onBackToMenu}>
-            Back to Menu
-          </Button>
+          <div className="rematch-status">
+            <p className="rematch-message">{rematchMessage}</p>
+            {rematchError && <p className="rematch-error">{rematchError}</p>}
+          </div>
+          <div className="game-complete-actions">
+            <Button
+              variant="success"
+              size="large"
+              onClick={handleRequestRematch}
+              disabled={rematchRequested}
+              className="game-complete-action"
+            >
+              {rematchRequested ? "Waiting for Opponent..." : "Rematch"}
+            </Button>
+            <Button variant="outline" size="large" onClick={onBackToMenu} className="game-complete-action">
+              Back to Menu
+            </Button>
+          </div>
         </div>
       </div>
     );

@@ -62,6 +62,39 @@ function clearRoomReconnectGraceTimers(roomCode) {
   });
 }
 
+function initializeRoomRematchState(room) {
+  room.rematchVotes = new Set();
+  room.rematchRequestedAt = null;
+}
+
+function clearRoomRematchState(room) {
+  if (!room) return;
+  room.rematchVotes = new Set();
+  room.rematchRequestedAt = null;
+}
+
+function getRoomRematchProgress(room) {
+  const rematchVotes = room.rematchVotes instanceof Set ? room.rematchVotes : new Set();
+  const acceptedPlayerIndexes = room.players
+    .map((player, index) => (rematchVotes.has(player.reconnectToken) ? index : null))
+    .filter((index) => index !== null);
+
+  return {
+    accepted: acceptedPlayerIndexes.length,
+    required: room.players.length,
+    acceptedPlayerIndexes,
+  };
+}
+
+function sanitizeRoomForBroadcast(room) {
+  return {
+    code: room.code,
+    gameType: room.gameType,
+    status: room.status,
+    players: room.players.map(sanitizePlayerForClient),
+  };
+}
+
 // Health check endpoint
 app.get("/api/health", (req, res) => {
   res.json({
@@ -130,6 +163,19 @@ io.on("connection", (socket) => {
   };
 
   const isRoomPausedForReconnect = (room) => room.players.some((player) => player.disconnectedAt);
+  const emitRematchProgress = (room) => {
+    const progress = getRoomRematchProgress(room);
+    io.to(room.code).emit("vetrolisci-rematch-progress", progress);
+    return progress;
+  };
+  const clearRematchVote = (room, reconnectToken) => {
+    if (!room || !(room.rematchVotes instanceof Set)) return false;
+    const removed = room.rematchVotes.delete(reconnectToken);
+    if (room.rematchVotes.size === 0) {
+      room.rematchRequestedAt = null;
+    }
+    return removed;
+  };
 
   // Create room
   socket.on("create-room", (data, callback) => {
@@ -153,6 +199,7 @@ io.on("connection", (socket) => {
         status: "waiting", // 'waiting', 'playing', 'finished'
         createdAt: Date.now(),
       };
+      initializeRoomRematchState(room);
 
       rooms.set(roomCode, room);
       players.set(socket.id, { roomCode: room.code, ...hostPlayer });
@@ -251,7 +298,8 @@ io.on("connection", (socket) => {
         }
 
         if (room.players.length === 2 && room.players.every((player) => !player.disconnectedAt)) {
-          room.status = "playing";
+          const existingGame = vetrolisciServer.getGame(room.code);
+          room.status = existingGame?.phase === "finished" ? "finished" : "playing";
         }
 
         const gameState = vetrolisciServer.getGameState(room.code);
@@ -318,13 +366,11 @@ io.on("connection", (socket) => {
         try {
           gameState = vetrolisciServer.createGame(room.code, room.players);
           room.status = "playing";
+          clearRoomRematchState(room);
           logger.log(`🎮 Vetrolisci game created for room ${room.code}`);
 
           io.to(room.code).emit("game-started", {
-            room: {
-              ...room,
-              players: room.players.map(sanitizePlayerForClient),
-            },
+            room: sanitizeRoomForBroadcast(room),
             gameState,
             message: "Game started! Let the fun begin!",
           });
@@ -450,6 +496,7 @@ io.on("connection", (socket) => {
         logger.warn(`⚠️ Missing game state for room ${room.code}, reinitializing Vetrolisci game`);
         gameState = vetrolisciServer.createGame(room.code, room.players);
         room.status = "playing";
+        clearRoomRematchState(room);
       }
 
       callback({
@@ -522,9 +569,13 @@ io.on("connection", (socket) => {
       io.to(roomCode).emit("vetrolisci-game-state", gameState);
 
       if (advanceResult.gameComplete) {
+        room.status = "finished";
+        clearRoomRematchState(room);
         io.to(roomCode).emit("vetrolisci-game-complete", {
           gameState,
         });
+      } else {
+        room.status = "playing";
       }
 
       logger.log(`🎯 Transitioned from scoring to ${game.phase} phase`);
@@ -535,6 +586,92 @@ io.on("connection", (socket) => {
       });
     } catch (error) {
       console.error(`❌ Continue from scoring error: ${error.message}`);
+      callback({ success: false, error: error.message });
+    }
+  });
+
+  socket.on("vetrolisci-request-rematch", (data, callback = () => {}) => {
+    try {
+      const { roomCode } = data || {};
+      const room = rooms.get(roomCode?.toUpperCase());
+
+      if (!room) {
+        callback({ success: false, error: "Room not found or expired" });
+        return;
+      }
+
+      if (room.players.length < 2) {
+        callback({ success: false, error: "Need two players for rematch" });
+        return;
+      }
+
+      if (isRoomPausedForReconnect(room)) {
+        callback({ success: false, error: "Game is paused while waiting for player reconnection" });
+        return;
+      }
+
+      const game = vetrolisciServer.getGame(room.code);
+      if (!game) {
+        callback({ success: false, error: "Game not found" });
+        return;
+      }
+
+      if (game.phase !== "finished") {
+        callback({ success: false, error: "Rematch is only available after game completion" });
+        return;
+      }
+
+      const requestingPlayer = room.players.find((player) => player.id === socket.id);
+      if (!requestingPlayer) {
+        callback({ success: false, error: "Player is not part of this room" });
+        return;
+      }
+
+      if (!(room.rematchVotes instanceof Set)) {
+        initializeRoomRematchState(room);
+      }
+
+      room.rematchVotes.add(requestingPlayer.reconnectToken);
+      if (!room.rematchRequestedAt) {
+        room.rematchRequestedAt = Date.now();
+      }
+
+      const progress = emitRematchProgress(room);
+      if (progress.accepted < progress.required) {
+        callback({
+          success: true,
+          waitingForOtherPlayer: true,
+          ...progress,
+        });
+        return;
+      }
+
+      let nextGameState = null;
+      try {
+        nextGameState = vetrolisciServer.createGame(room.code, room.players);
+      } catch (error) {
+        clearRoomRematchState(room);
+        io.to(room.code).emit("vetrolisci-rematch-error", {
+          error: "Failed to start rematch. Please return to menu and create a new room.",
+        });
+        callback({ success: false, error: error.message });
+        return;
+      }
+
+      room.status = "playing";
+      clearRoomRematchState(room);
+
+      io.to(room.code).emit("vetrolisci-rematch-started", {
+        gameState: nextGameState,
+      });
+      io.to(room.code).emit("vetrolisci-game-state", nextGameState);
+
+      callback({
+        success: true,
+        waitingForOtherPlayer: false,
+        gameState: nextGameState,
+      });
+    } catch (error) {
       callback({ success: false, error: error.message });
     }
   });
@@ -557,6 +694,13 @@ io.on("connection", (socket) => {
           const disconnectedPlayer = room.players[disconnectedPlayerIndex];
           disconnectedPlayer.id = null;
           disconnectedPlayer.disconnectedAt = Date.now();
+          const removedRematchVote = clearRematchVote(room, disconnectedPlayer.reconnectToken);
+          if (removedRematchVote) {
+            io.to(room.code).emit("vetrolisci-rematch-error", {
+              error: `${disconnectedPlayer.name} disconnected. Rematch request was canceled.`,
+            });
+            emitRematchProgress(room);
+          }
 
           // Use a shorter grace period for "waiting" rooms (15s vs full 60s)
           const gracePeriod = room.status === "playing" ? RECONNECT_GRACE_PERIOD_MS : 15_000;
@@ -582,6 +726,7 @@ io.on("connection", (socket) => {
 
             const [timedOutPlayer] = activeRoom.players.splice(timedOutPlayerIndex, 1);
             reconnectGraceTimers.delete(timerKey);
+            clearRoomRematchState(activeRoom);
 
             io.to(activeRoom.code).emit("rejoin-grace-expired", {
               playerName: timedOutPlayer.name,
@@ -600,7 +745,7 @@ io.on("connection", (socket) => {
               return;
             }
 
-            if (activeRoom.status === "playing") {
+            if (activeRoom.status !== "waiting") {
               activeRoom.status = "waiting";
               vetrolisciServer.removeGame(activeRoom.code);
             }
@@ -614,6 +759,7 @@ io.on("connection", (socket) => {
           reconnectGraceTimers.set(timerKey, graceTimer);
         } else {
           room.players = room.players.filter((player) => player.reconnectToken !== playerInfo.reconnectToken);
+          clearRoomRematchState(room);
 
           socket.to(playerInfo.roomCode).emit("player-left", {
             playerId: socket.id,

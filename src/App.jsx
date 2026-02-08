@@ -319,6 +319,17 @@ function App() {
     pushToast("Copied!", "success");
   };
 
+  const handleRematchStartedToast = useCallback(() => {
+    pushToast("Rematch started", "success");
+  }, [pushToast]);
+
+  const handleRematchErrorToast = useCallback(
+    (message) => {
+      pushToast(message || "Rematch failed", "error");
+    },
+    [pushToast],
+  );
+
   if (loading && currentView === "menu") {
     return (
       <div className="app">
@@ -479,6 +490,8 @@ function App() {
             roomCode={gameData.roomCode}
             playerIndex={gameData.playerIndex}
             onBackToMenu={handleBack}
+            onRematchStarted={handleRematchStartedToast}
+            onRematchError={handleRematchErrorToast}
             onGameStateUpdate={(gameState) => {
               setGameData((prev) => ({ ...prev, gameState }));
             }}

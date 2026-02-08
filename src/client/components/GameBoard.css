@@ -863,29 +863,33 @@
   }
 }
 
-/* Back to Menu Button */
-.game-complete button {
-  padding: var(--spacing-md) var(--spacing-2xl);
-  background: var(--gradient-primary);
-  color: var(--color-white);
-  border: none;
-  border-radius: var(--border-radius-lg);
-  cursor: pointer;
-  font-size: var(--font-size-lg);
+.game-complete .rematch-status {
+  margin-top: var(--spacing-md);
+}
+
+.game-complete .rematch-message {
+  margin: 0;
+  color: var(--color-gray-700);
+  font-size: var(--font-size-sm);
+}
+
+.game-complete .rematch-error {
+  margin: var(--spacing-xs) 0 0;
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  transition: var(--transition-all);
-  box-shadow: var(--shadow-lg);
+}
+
+.game-complete .game-complete-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-md);
   margin-top: var(--spacing-lg);
+  flex-wrap: wrap;
 }
 
-.game-complete button:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-xl);
-  filter: brightness(1.05);
-}
-
-.game-complete button:active {
-  transform: translateY(0);
+.game-complete .game-complete-action.button {
+  min-width: 190px;
 }
 
 @media (max-width: 768px) {

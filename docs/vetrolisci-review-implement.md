@@ -249,3 +249,22 @@ Issues are grouped into 4 sprints ordered by severity and dependency. Each sprin
 **Recommended order:** Sprint 1 → Sprint 2 → Sprint 3 → Sprint 4
 
 Sprint 1 is prerequisite for a working game loop. Sprint 2 prevents production issues. Sprints 3 and 4 are independent and can be done in any order or parallelized.
+
+---
+
+## Rematch QA Addendum (2026-02-08)
+
+Run this checklist after any rematch-related change.
+
+1. Finish a full 3-round match and confirm the final screen shows both `Rematch` and `Back to Menu`.
+2. Click `Rematch` from only one client and verify:
+   - final screen shows waiting/progress state
+   - match does not restart yet
+3. Click `Rematch` from the second client and verify:
+   - both clients receive a success toast (`Rematch started`)
+   - both clients transition to a fresh round 1 draft in the same room code
+4. During rematch voting, disconnect one client and verify:
+   - remaining client sees rematch cancellation feedback
+   - an error toast appears for rematch cancellation/failure
+5. After rematch starts, play at least one turn and verify normal events still work (`vetrolisci-card-placed`, scoring, turn order).
+6. Use `Back to Menu` from final screen and verify leaving still works as before (no stuck room UI, no broken reconnect token behavior).
