@@ -264,6 +264,7 @@ npm run client      # Client only (Vite dev server)
 3. **Fixed React hooks ordering** in `GameBoard.jsx` - all hooks at component top
 4. **Added restriction system** with visual overlays and validation logic
 5. **Fixed modal data structures** for CardChoiceModal and PlacementChoiceModal
+6. **Fixed mid-turn round end** in `vetrolisci-server.js` - rounds end immediately when any player fills their grid, regardless of remaining picks in the turn
 
 ### Testing & Debugging
 

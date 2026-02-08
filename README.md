@@ -72,7 +72,7 @@ npm run premerge  # Lint + build
 
 ## 🏗️ Project Architecture
 
-```
+``` tree
 src/
 ├── App.jsx                     # Main app with room system and navigation
 ├── App.css                     # Global styles and responsive design

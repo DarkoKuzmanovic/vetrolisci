@@ -213,9 +213,24 @@ export class VetrolisciServer {
         );
       }
 
-      // Check if draft phase is complete
+      // Mid-turn round end check: end round immediately when any player fills their grid
       let turnEndResult = null;
-      if (game.draftState.phase === DraftPhase.COMPLETE) {
+
+      if (placementResult && game.draftState.phase !== DraftPhase.COMPLETE) {
+        const anyGridFull = game.players.some((p) => p.grid.every((cell) => cell !== null));
+        if (anyGridFull) {
+          logger.log(`🎯 Grid filled mid-turn - ending round immediately`);
+          game.lastPicker = playerIndex;
+          game.playerTurnCounts[0]++;
+          game.playerTurnCounts[1]++;
+          game.turn++;
+          const roundResult = this.endRound(game);
+          turnEndResult = { roundComplete: true, ...roundResult };
+        }
+      }
+
+      // Check if draft phase is complete (normal turn end - all 4 cards picked)
+      if (game.draftState.phase === DraftPhase.COMPLETE && !turnEndResult) {
         logger.log(`🎯 Turn complete - all 4 cards picked`);
 
         // Store the last picker for next turn's pick order

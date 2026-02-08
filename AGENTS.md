@@ -545,6 +545,18 @@ This repository currently does not include a dedicated `src/agents/` implementat
 
 ## 🆘 Troubleshooting
 
+### Lessons Learned
+
+#### 2026-02-08: Mid-Turn Round End Detection
+
+**Problem:** When a player filled their 3×3 grid mid-turn (e.g., on the 1st pick of a 4-pick turn), the server logged "Round continues - no player has filled their grid yet" and started a new turn instead of ending the round.
+
+**Root cause:** `checkRoundEndCondition()` was only called from `checkTurnEnd()`, which itself only ran when `DraftPhase.COMPLETE` (all 4 picks done). A grid could become full on pick 1, 2, or 3, but the check never ran until pick 4.
+
+**Solution:** Added a mid-turn grid-full check after every card placement. When any player's grid is full, the round ends immediately regardless of remaining picks in the turn.
+
+**Prevention:** Round/game lifecycle checks should run after every state-changing action, not only at phase boundaries.
+
 ### Common Issues
 
 1. **Agent Not Responding**: Check Socket.IO connection and event handlers

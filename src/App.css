@@ -821,10 +821,10 @@ h2.join-game-title {
 }
 
 .room-info {
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--glass-bg-light);
   backdrop-filter: blur(12px);
   border-radius: var(--border-radius-xl);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--glass-border);
   padding: var(--spacing-xl);
   width: 100%;
   max-width: 460px;
@@ -846,7 +846,7 @@ h2.join-game-title {
 /* Game Section */
 .game-section {
   padding-bottom: var(--spacing-lg);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  border-bottom: 1px solid var(--glass-border-light);
 }
 
 .game-info {

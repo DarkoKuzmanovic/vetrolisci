@@ -2,6 +2,7 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Card from "./Card.jsx";
 import Confetti from "./Confetti.jsx";
+import { staggerContainer, staggerItem } from "../../shared/styles/animations.js";
 import "./GameGrid.css";
 
 const GameGrid = ({
@@ -13,44 +14,39 @@ const GameGrid = ({
   onConfettiComplete,
 }) => {
   return (
-    <motion.div className={`game-grid ${isOpponent ? "opponent" : ""}`} role="grid" initial={false} layout>
+    <motion.div
+      className={`game-grid ${isOpponent ? "opponent" : ""}`}
+      role="grid"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="visible"
+    >
       {grid.map((card, index) => (
         <motion.div
           key={index}
           className={`grid-space ${card ? "filled" : "empty"}`}
           role="gridcell"
           aria-label={card ? `Card ${card.value}` : `Empty space ${index + 1}`}
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{
-            opacity: 1,
-            scale: 1,
-            transition: {
-              duration: 0.3,
-              delay: index * 0.05,
-              ease: "easeOut",
-            },
-          }}
+          variants={staggerItem}
           layout
         >
-          {!card && (
-            <motion.div className="space-number" initial={{ opacity: 0.3 }} animate={{ opacity: 0.6 }}>
-              {index + 1}
-            </motion.div>
-          )}
+          {!card && <div className="space-number">{index + 1}</div>}
           <AnimatePresence mode="wait">
             {card && (
               <motion.div
                 key={card.id}
-                initial={{ opacity: 0, scale: 0.8, rotateY: -90 }}
+                initial={{ opacity: 0, scale: 0.8, rotateY: isOpponent ? 0 : -30 }}
                 animate={{
                   opacity: 1,
                   scale: 1,
                   rotateY: 0,
                   transition: {
-                    duration: 0.5,
-                    ease: "backOut",
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 20,
                   },
                 }}
+                className="card-wrapper"
               >
                 <Card
                   card={card}

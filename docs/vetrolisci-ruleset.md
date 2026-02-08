@@ -92,12 +92,8 @@ Cards must be placed according to these scenarios based on the card's number:
 
 ### Standard End
 
-- A round ends after the turn in which any player fills all 9 spaces (face-up or face-down)
-
-### 2-Player Special Rule
-
-- If one player fills their last space mid-turn, the round continues until both players have placed an equal number of cards
-- Example: Player 1 fills their grid after placing their first card of the turn. Player 2 still gets to place one more card. The round then ends even if 2 cards remain unpicked.
+- A round ends immediately when any player fills all 9 grid spaces (face-up or face-down), even if it occurs mid-turn
+- Any remaining unpicked cards in the current turn are discarded
 
 ## 8. Scoring System
 
